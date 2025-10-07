@@ -1326,47 +1326,42 @@ def api_statistics():
                 'count': row[1]
             })
 
-        # 3. Top 10 utilisateurs (par temps de session remote)
-        # Calculer le temps total en remote pour chaque utilisateur
-        if is_demo_mode():
-            # Mode démo : anonymiser
-            c.execute(f'''
-                SELECT
-                    user,
-                    SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) as total_duration
-                FROM vpn_events v
-                WHERE {where_sql}
-                GROUP BY user
-                ORDER BY total_duration DESC
-                LIMIT 10
-            ''', params)
+        # 3. Top 10 utilisateurs (par temps de session remote uniquement)
+        # Récupérer toutes les sessions avec IP et durée
+        c.execute(f'''
+            SELECT
+                user,
+                ip_address,
+                company_id,
+                duration
+            FROM vpn_events v
+            WHERE {where_sql} AND duration > 0
+        ''', params)
 
-            top_users = []
-            for row in c.fetchall():
-                hours = row[1] / 3600 if row[1] else 0
-                top_users.append({
-                    'user': anonymize_username(row[0]),
-                    'hours': round(hours, 1)
-                })
-        else:
-            c.execute(f'''
-                SELECT
-                    user,
-                    SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) as total_duration
-                FROM vpn_events v
-                WHERE {where_sql}
-                GROUP BY user
-                ORDER BY total_duration DESC
-                LIMIT 10
-            ''', params)
+        # Calculer le temps total remote par utilisateur
+        user_remote_time = {}
+        for row in c.fetchall():
+            username = row[0]
+            ip_address = row[1]
+            comp_id = row[2]
+            duration = row[3]
 
-            top_users = []
-            for row in c.fetchall():
-                hours = row[1] / 3600 if row[1] else 0
-                top_users.append({
-                    'user': row[0],
-                    'hours': round(hours, 1)
-                })
+            # Vérifier si l'IP est remote (pas locale)
+            if ip_address and not is_local_ip(ip_address, comp_id):
+                if username not in user_remote_time:
+                    user_remote_time[username] = 0
+                user_remote_time[username] += duration
+
+        # Trier et prendre le top 10
+        sorted_users = sorted(user_remote_time.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        top_users = []
+        for username, total_seconds in sorted_users:
+            hours = total_seconds / 3600
+            top_users.append({
+                'user': anonymize_username(username) if is_demo_mode() else username,
+                'hours': round(hours, 1)
+            })
 
         # 4. Par société
         c.execute(f'''
