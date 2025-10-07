@@ -122,15 +122,47 @@ Pour activer l'authentification LDAP/Active Directory :
 
 ## 🗺️ Roadmap
 
-### v2.2.0
-- [ ] Support HTTPS/SSL
-  - Configuration certificats SSL
-  - Redirection HTTP → HTTPS
-  - HSTS (HTTP Strict Transport Security)
-- [ ] Logs d'audit complets
-- [ ] Export PDF rapports
+### v2.2.0 (En cours)
 - [ ] Graphiques statistiques
+  - Graphiques de connexions par jour/semaine/mois
+  - Statistiques par utilisateur
+  - Statistiques par société
+  - Durées moyennes de session
+
+### v2.2.1
 - [ ] Dark mode
+  - Thème sombre pour toutes les pages
+  - Switch automatique ou manuel
+  - Préférences utilisateur sauvegardées
+
+### v2.2.2
+- [ ] Export PDF rapports
+  - Export des logs en PDF
+  - Rapports statistiques PDF
+  - Mise en page personnalisée
+
+### v2.2.3
+- [ ] Logs d'audit complets
+  - Traçabilité des actions admin
+  - Historique des modifications
+  - Export des logs d'audit
+
+### v2.2.4.1
+- [ ] HTTPS/SSL - Configuration certificats
+  - Support Let's Encrypt
+  - Certificats auto-signés
+  - Configuration Apache/Nginx
+
+### v2.2.4.2
+- [ ] HTTPS/SSL - Redirection et sécurité
+  - Redirection HTTP → HTTPS
+  - Configuration Flask SSL
+
+### v2.2.4.3
+- [ ] HTTPS/SSL - Durcissement
+  - HSTS (HTTP Strict Transport Security)
+  - Configuration headers sécurité
+  - Tests SSL/TLS
 
 ### v2.3.0
 - [ ] API REST complète (OpenAPI)
