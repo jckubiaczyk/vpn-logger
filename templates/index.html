@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN Logs - UniFi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links a {
+            margin-left: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .nav-links a:hover {
+            background: #764ba2;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f3f4f6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .user-info .username {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .user-info .role-badge {
+            padding: 3px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .btn-logout {
+            padding: 8px 15px;
+            background: #dc2626;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-logout:hover {
+            background: #991b1b;
+        }
+
+        .badge-local {
+            background: #10b981;
+            color: white;
+        }
+
+        .badge-remote {
+            background: #f59e0b;
+            color: white;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .filters input, .filters select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .filters button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .filters button:hover {
+            background: #764ba2;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #667eea;
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-connect {
+            background: #10b981;
+            color: white;
+        }
+
+        .badge-disconnect {
+            background: #ef4444;
+            color: white;
+        }
+
+        .badge-unknown {
+            background: #6b7280;
+            color: white;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .refresh-btn:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .auto-refresh {
+            margin-left: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>📊 VPN Logs Monitor</h1>
+                <p class="subtitle">Surveillance des connexions VPN UniFi en temps réel</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="user-info">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="role-badge">{{ user.role }}</span>
+                </div>
+                <div class="nav-links">
+                    <a href="/" style="background: #764ba2;">📊 Logs</a>
+                    <a href="/calendar">📅 Calendrier</a>
+                    {% if user.role in ['super_admin', 'admin'] %}
+                    <a href="/admin">⚙️ Admin</a>
+                    {% endif %}
+                    <a href="/logout" class="btn-logout">Déconnexion</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Événements</h3>
+                <div class="value" id="total-events">{{ events|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Connexions</h3>
+                <div class="value" id="connections">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Déconnexions</h3>
+                <div class="value" id="disconnections">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Dernière Activité</h3>
+                <div class="value" style="font-size: 18px;" id="last-activity">-</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <select id="company-filter" style="{% if user.role == 'demo' or user.companies|length <= 1 %}display:none;{% endif %}" onchange="filterByCompany()">
+                <option value="">Toutes les sociétés</option>
+                {% if user.companies %}
+                    {% for company in user.companies %}
+                    <option value="{{ company.id }}" {% if request.args.get('company_id')|int == company.id %}selected{% endif %}>{{ company.name }}</option>
+                    {% endfor %}
+                {% endif %}
+            </select>
+            <input type="text" id="search-user" placeholder="Rechercher par utilisateur..." />
+            <select id="event-type-filter">
+                <option value="">Tous les événements</option>
+                <option value="connect">Connexions</option>
+                <option value="disconnect">Déconnexions</option>
+            </select>
+            <button onclick="applyFilters()">🔍 Filtrer</button>
+            <button onclick="exportCSV()">📥 Exporter CSV</button>
+            <label class="auto-refresh">
+                <input type="checkbox" id="auto-refresh" checked /> Auto-refresh (10s)
+            </label>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Horodatage</th>
+                        <th>Type</th>
+                        <th>Utilisateur</th>
+                        <th>IP</th>
+                        <th>Origine</th>
+                        <th>VPN Type</th>
+                        <th>Durée</th>
+                    </tr>
+                </thead>
+                <tbody id="events-table">
+                    {% if events %}
+                        {% for event in events %}
+                        <tr>
+                            <td>{{ event[1] }}</td>
+                            <td>
+                                {% if 'disconnect' in event[2]|lower %}
+                                    <span class="badge badge-disconnect">DISCONNECT</span>
+                                {% elif 'connect' in event[2]|lower %}
+                                    <span class="badge badge-connect">CONNECT</span>
+                                {% else %}
+                                    <span class="badge badge-unknown">{{ event[2] }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ event[3] }}</strong></td>
+                            <td>{{ event[4] }}</td>
+                            <td>{{ event[5] }}</td>
+                            <td>{{ event[6] if event[6] else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="no-data">
+                                Aucun événement VPN enregistré. <br>
+                                Configurez les webhooks UniFi pour commencer à recevoir des événements.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <button class="refresh-btn" onclick="refreshData()">🔄 Actualiser</button>
+    </div>
+
+    <script>
+        // Auto-refresh
+        let autoRefreshInterval;
+
+        function filterByCompany() {
+            const companyId = document.getElementById('company-filter').value;
+            if (companyId) {
+                window.location.href = '/?company_id=' + companyId;
+            } else {
+                window.location.href = '/';
+            }
+        }
+
+        function startAutoRefresh() {
+            if (document.getElementById('auto-refresh').checked) {
+                autoRefreshInterval = setInterval(refreshData, 10000);
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+
+        document.getElementById('auto-refresh').addEventListener('change', startAutoRefresh);
+        startAutoRefresh();
+
+        // Rafraîchir les données
+        function refreshData() {
+            fetch('/api/events')
+                .then(response => response.json())
+                .then(data => {
+                    updateTable(data);
+                });
+
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    updateStats(data);
+                });
+        }
+
+        // Mettre à jour le tableau
+        function updateTable(events) {
+            const tbody = document.getElementById('events-table');
+            tbody.innerHTML = '';
+
+            if (events.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucun événement</td></tr>';
+                return;
+            }
+
+            events.forEach(event => {
+                const row = tbody.insertRow();
+                let badgeClass = 'badge-unknown';
+                let badgeText = event.event_type;
+
+                if (event.event_type.toLowerCase().includes('disconnect')) {
+                    badgeClass = 'badge-disconnect';
+                    badgeText = 'DISCONNECT';
+                } else if (event.event_type.toLowerCase().includes('connect')) {
+                    badgeClass = 'badge-connect';
+                    badgeText = 'CONNECT';
+                }
+
+                // Formater la durée
+                let durationText = '-';
+                if (event.duration) {
+                    const hours = Math.floor(event.duration / 3600);
+                    const minutes = Math.floor((event.duration % 3600) / 60);
+                    const seconds = event.duration % 60;
+
+                    if (hours > 0) {
+                        durationText = `${hours}h ${minutes}m ${seconds}s`;
+                    } else if (minutes > 0) {
+                        durationText = `${minutes}m ${seconds}s`;
+                    } else {
+                        durationText = `${seconds}s`;
+                    }
+                }
+
+                // Badge pour Local/Remote
+                let locationBadge = '';
+                if (event.ip_address !== 'unknown') {
+                    const locationClass = event.is_local ? 'badge-local' : 'badge-remote';
+                    const locationText = event.is_local ? '🏠 Local' : '🌍 Remote';
+                    locationBadge = `<span class="badge ${locationClass}">${locationText}</span>`;
+                }
+
+                row.innerHTML = `
+                    <td>${event.timestamp}</td>
+                    <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                    <td><strong>${event.user}</strong></td>
+                    <td>${event.ip_address}</td>
+                    <td>${locationBadge}</td>
+                    <td>${event.vpn_type}</td>
+                    <td>${durationText}</td>
+                `;
+            });
+        }
+
+        // Mettre à jour les stats
+        function updateStats(stats) {
+            document.getElementById('total-events').textContent = stats.total_events;
+
+            const byType = stats.events_by_type;
+            let connections = 0;
+            let disconnections = 0;
+
+            for (let type in byType) {
+                if (type.toLowerCase().includes('connect') && !type.toLowerCase().includes('disconnect')) {
+                    connections += byType[type];
+                } else if (type.toLowerCase().includes('disconnect')) {
+                    disconnections += byType[type];
+                }
+            }
+
+            document.getElementById('connections').textContent = connections;
+            document.getElementById('disconnections').textContent = disconnections;
+
+            if (stats.last_connection) {
+                const lastTime = new Date(stats.last_connection[0]).toLocaleString('fr-FR');
+                document.getElementById('last-activity').textContent = lastTime;
+            }
+        }
+
+        // Filtrer les événements
+        function applyFilters() {
+            const user = document.getElementById('search-user').value;
+            const type = document.getElementById('event-type-filter').value;
+
+            let url = '/api/events?';
+            if (type) url += `type=${type}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (user) {
+                        data = data.filter(e => e.user.toLowerCase().includes(user.toLowerCase()));
+                    }
+                    updateTable(data);
+                });
+        }
+
+        // Exporter en CSV
+        function exportCSV() {
+            fetch('/api/events?limit=1000')
+                .then(response => response.json())
+                .then(data => {
+                    let csv = 'Timestamp,Type,User,IP,VPN Type,Duration\n';
+                    data.forEach(event => {
+                        csv += `${event.timestamp},${event.event_type},${event.user},${event.ip_address},${event.vpn_type},${event.duration || ''}\n`;
+                    });
+
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `vpn_logs_${new Date().toISOString()}.csv`;
+                    a.click();
+                });
+        }
+
+        // Charger les stats au démarrage
+        refreshData();
+    </script>
+
+    <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 40px;">
+        VPN Logger v{{ app_version }} - Système de monitoring VPN UniFi
+    </div>
+</body>
+</html>

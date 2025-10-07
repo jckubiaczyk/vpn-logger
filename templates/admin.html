@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - VPN Logger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f3f4f6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .user-info .username {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .user-info .role-badge {
+            padding: 3px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .nav-links a {
+            margin-left: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .nav-links a:hover {
+            background: #764ba2;
+        }
+
+        .btn-logout {
+            padding: 8px 15px;
+            background: #dc2626;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .btn-logout:hover {
+            background: #991b1b;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: white;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .config-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .config-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        table tr:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-super-admin {
+            background: #dc2626;
+            color: white;
+        }
+
+        .badge-admin {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .badge-viewer {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .badge-demo {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .badge-active {
+            background: #10b981;
+            color: white;
+        }
+
+        .badge-inactive {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #764ba2;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #e5e7eb;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .checkbox-item {
+            padding: 8px;
+            margin-bottom: 5px;
+        }
+
+        .checkbox-item label {
+            display: inline;
+            margin-left: 8px;
+            font-weight: normal;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .help-text {
+            color: #666;
+            font-size: 13px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .network-list {
+            margin: 20px 0;
+        }
+
+        .network-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .network-item input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>⚙️ Administration</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="user-info">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="role-badge">{{ user.role }}</span>
+                </div>
+                <div class="nav-links">
+                    <a href="/">📊 Logs</a>
+                    <a href="/calendar">📅 Calendrier</a>
+                    <a href="/admin" style="background: #764ba2;">⚙️ Admin</a>
+                    <a href="/logout" class="btn-logout">Déconnexion</a>
+                </div>
+            </div>
+        </header>
+
+        <div id="message" class="message"></div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('users')">👥 Utilisateurs</div>
+            <div class="tab" onclick="switchTab('companies')">🏢 Sociétés</div>
+            <div class="tab" onclick="switchTab('routers')">📡 Routeurs</div>
+        </div>
+
+        <!-- Tab: Users -->
+        <div id="tab-users" class="tab-content active">
+            <div class="config-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none;">Gestion des Utilisateurs</h2>
+                    <button class="btn btn-success" onclick="openUserModal()">➕ Nouvel Utilisateur</button>
+                </div>
+
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Nom d'utilisateur</th>
+                            <th>Email</th>
+                            <th>Rôle</th>
+                            <th>Sociétés</th>
+                            <th>Type Auth</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab: Companies -->
+        <div id="tab-companies" class="tab-content">
+            <div class="config-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none;">Gestion des Sociétés</h2>
+                    <button class="btn btn-success" onclick="openCompanyModal()">➕ Nouvelle Société</button>
+                </div>
+
+                <table id="companies-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Description</th>
+                            <th>Créée le</th>
+                            <th>Nb Utilisateurs</th>
+                            <th>Nb Événements</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab: Routers -->
+        <div id="tab-routers" class="tab-content">
+            <div class="config-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none;">Gestion des Routeurs UniFi</h2>
+                    <button class="btn btn-success" onclick="openRouterModal()">➕ Nouveau Routeur</button>
+                </div>
+
+                <table id="routers-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>UniFi Host</th>
+                            <th>Société</th>
+                            <th>Description</th>
+                            <th>Nb Événements</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal: User -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="user-modal-title">Nouvel Utilisateur</h2>
+            <form id="user-form" onsubmit="saveUser(event)">
+                <input type="hidden" id="user-id">
+
+                <div class="form-group">
+                    <label>Nom d'utilisateur *</label>
+                    <input type="text" id="user-username" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="user-email">
+                </div>
+
+                <div class="form-group" id="password-field">
+                    <label>Mot de passe *</label>
+                    <input type="password" id="user-password">
+                    <span class="help-text" id="password-help">Minimum 6 caractères</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Rôle *</label>
+                    <select id="user-role" required onchange="updateCompanyVisibility()">
+                        <option value="admin">Admin</option>
+                        <option value="viewer">Viewer</option>
+                        <option value="demo">Demo</option>
+                        {% if user.role == 'super_admin' %}
+                        <option value="super_admin">Super Admin</option>
+                        {% endif %}
+                    </select>
+                    <span class="help-text">Super Admin: accès total | Admin: gestion des sociétés assignées | Viewer: lecture seule | Demo: données anonymisées</span>
+                </div>
+
+                <div class="form-group" id="user-companies-group">
+                    <label>Sociétés associées</label>
+                    <div class="checkbox-group" id="user-companies-list">
+                        <!-- Filled by JS -->
+                    </div>
+                    <span class="help-text">Non applicable pour Super Admin et Demo</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Type d'authentification *</label>
+                    <select id="user-auth-type" required disabled>
+                        <option value="local">Locale (Base de données)</option>
+                        <option value="ldap">LDAP/Active Directory</option>
+                    </select>
+                    <span class="help-text">Type d'authentification (non modifiable)</span>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="user-active" checked>
+                        Compte actif
+                    </label>
+                </div>
+
+                <div style="margin-top: 30px; display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">💾 Sauvegarder</button>
+                    <button type="button" class="btn" onclick="closeUserModal()" style="background: #6b7280; color: white;">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Company -->
+    <div id="company-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="company-modal-title">Nouvelle Société</h2>
+            <form id="company-form" onsubmit="saveCompany(event)">
+                <input type="hidden" id="company-id">
+
+                <div class="form-group">
+                    <label>Nom *</label>
+                    <input type="text" id="company-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="company-description">
+                </div>
+
+                <div class="form-group">
+                    <label>Réseaux Locaux</label>
+                    <div id="company-networks-list" style="margin-bottom: 10px;">
+                        <!-- Network items will be added here -->
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="new-network" placeholder="ex: 192.168.1.0/24" style="flex: 1;">
+                        <button type="button" class="btn btn-small" onclick="addNetwork()" style="background: #10b981;">➕ Ajouter</button>
+                    </div>
+                    <span class="help-text">Réseaux IP considérés comme locaux (CIDR notation)</span>
+                </div>
+
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+                <h3 style="margin-bottom: 20px; color: #667eea;">🔐 Configuration LDAP/Active Directory</h3>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="company-ldap-enabled"> Activer l'authentification LDAP
+                    </label>
+                    <span class="help-text">Permet aux utilisateurs du domaine de se connecter automatiquement</span>
+                </div>
+
+                <div id="ldap-config" style="display: none;">
+                    <div class="form-group">
+                        <label>Serveur LDAP *</label>
+                        <input type="text" id="company-ldap-server" placeholder="dc.nidaplast.local">
+                        <span class="help-text">Nom du contrôleur de domaine</span>
+                    </div>
+
+                    <div class="form-group" style="display: flex; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label>Port</label>
+                            <input type="number" id="company-ldap-port" value="389">
+                        </div>
+                        <div style="flex: 1;">
+                            <label>
+                                <input type="checkbox" id="company-ldap-ssl"> Utiliser SSL (LDAPS)
+                            </label>
+                            <span class="help-text">Port 636 recommandé pour SSL</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Base DN *</label>
+                        <input type="text" id="company-ldap-base-dn" placeholder="DC=nidaplast,DC=local">
+                        <span class="help-text">Base Distinguished Name du domaine</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Template DN Utilisateur</label>
+                        <input type="text" id="company-ldap-user-dn" placeholder="{username}@nidaplast.local">
+                        <span class="help-text">Utilisez {username} comme placeholder. Ex: {username}@domain.local ou CN={username},OU=Users,DC=domain,DC=local</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Groupe Administrateurs *</label>
+                        <input type="text" id="company-ldap-admin-group" placeholder="CN=Domain Admins,CN=Users,DC=nidaplast,DC=local">
+                        <span class="help-text">DN complet du groupe. Seuls les membres de ce groupe pourront se connecter</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bind DN (optionnel)</label>
+                        <input type="text" id="company-ldap-bind-dn" placeholder="CN=service_account,OU=Service,DC=nidaplast,DC=local">
+                        <span class="help-text">Compte de service pour la recherche (si nécessaire)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mot de passe Bind (optionnel)</label>
+                        <input type="password" id="company-ldap-bind-password">
+                        <span class="help-text">Mot de passe du compte de service</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">💾 Sauvegarder</button>
+                    <button type="button" class="btn" onclick="closeCompanyModal()" style="background: #6b7280; color: white;">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Router -->
+    <div id="router-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="router-modal-title">Nouveau Routeur</h2>
+            <form id="router-form" onsubmit="saveRouter(event)">
+                <input type="hidden" id="router-id">
+
+                <div class="form-group">
+                    <label>Nom *</label>
+                    <input type="text" id="router-name" required>
+                    <span class="help-text">Nom descriptif du routeur</span>
+                </div>
+
+                <div class="form-group">
+                    <label>UniFi Host</label>
+                    <input type="text" id="router-unifi-host">
+                    <span class="help-text">Valeur UNIFIhost envoyée par le webhook (ex: "UDM Pro SE - Fresnes sur Escaut")</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Alarm ID</label>
+                    <input type="text" id="router-alarm-id">
+                    <span class="help-text">Identifiant unique du routeur (alarm_id)</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Société *</label>
+                    <select id="router-company-id" required>
+                        <!-- Filled by JS -->
+                    </select>
+                    <span class="help-text">Société à laquelle ce routeur est associé</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="router-description">
+                </div>
+
+                <div style="margin-top: 30px; display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">💾 Sauvegarder</button>
+                    <button type="button" class="btn" onclick="closeRouterModal()" style="background: #6b7280; color: white;">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let networkConfig = {{ config|tojson }};
+        let users = [];
+        let companies = [];
+        let routers = [];
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            if (tabName === 'users') loadUsers();
+            if (tabName === 'companies') loadCompanies();
+            if (tabName === 'routers') loadRouters();
+        }
+
+        // Messages
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+            msgEl.style.display = 'block';
+            setTimeout(() => {
+                msgEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // ==================== USERS ====================
+
+        function loadUsers() {
+            fetch('/api/admin/users')
+                .then(response => response.json())
+                .then(data => {
+                    users = data;
+                    renderUsers();
+                })
+                .catch(error => {
+                    showMessage('Erreur lors du chargement des utilisateurs: ' + error, 'error');
+                });
+        }
+
+        function renderUsers() {
+            const tbody = document.querySelector('#users-table tbody');
+            tbody.innerHTML = '';
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Aucun utilisateur</td></tr>';
+                return;
+            }
+
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                const roleClass = `badge-${user.role.replace('_', '-')}`;
+                const statusClass = user.active ? 'badge-active' : 'badge-inactive';
+                const companiesText = user.companies && user.companies.length > 0
+                    ? user.companies.map(c => c.name).join(', ')
+                    : '-';
+
+                tr.innerHTML = `
+                    <td><strong>${user.username}</strong></td>
+                    <td>${user.email || '-'}</td>
+                    <td><span class="badge ${roleClass}">${user.role}</span></td>
+                    <td>${companiesText}</td>
+                    <td>${user.auth_type}</td>
+                    <td><span class="badge ${statusClass}">${user.active ? 'Actif' : 'Inactif'}</span></td>
+                    <td>
+                        <button class="btn btn-primary btn-small" onclick="editUser(${user.id})">✏️ Éditer</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteUser(${user.id}, '${user.username}')">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openUserModal(userId = null) {
+            loadCompanies().then(() => {
+                const modal = document.getElementById('user-modal');
+                const form = document.getElementById('user-form');
+                form.reset();
+
+                // Render checkboxes first
+                renderCompanyCheckboxes();
+
+                if (userId) {
+                    document.getElementById('user-modal-title').textContent = 'Éditer Utilisateur';
+                    const user = users.find(u => u.id === userId);
+                    document.getElementById('user-id').value = user.id;
+                    document.getElementById('user-username').value = user.username;
+                    document.getElementById('user-email').value = user.email || '';
+                    document.getElementById('user-role').value = user.role;
+                    document.getElementById('user-auth-type').value = user.auth_type;
+                    document.getElementById('user-active').checked = user.active;
+
+                    // Masquer le champ mot de passe pour les utilisateurs LDAP
+                    const passwordField = document.getElementById('password-field');
+                    if (user.auth_type === 'ldap') {
+                        passwordField.style.display = 'none';
+                    } else {
+                        passwordField.style.display = 'block';
+                        document.getElementById('password-help').textContent = 'Laissez vide pour ne pas changer';
+                    }
+
+                    // Set selected companies AFTER rendering checkboxes
+                    const userCompanyIds = user.companies ? user.companies.map(c => c.id) : [];
+                    userCompanyIds.forEach(cid => {
+                        const checkbox = document.querySelector(`input[name="company"][value="${cid}"]`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                } else {
+                    document.getElementById('user-modal-title').textContent = 'Nouvel Utilisateur';
+                    document.getElementById('password-help').textContent = 'Minimum 6 caractères';
+                    // Afficher le champ mot de passe pour les nouveaux utilisateurs
+                    document.getElementById('password-field').style.display = 'block';
+                }
+
+                updateCompanyVisibility();
+                modal.classList.add('active');
+            });
+        }
+
+        function closeUserModal() {
+            document.getElementById('user-modal').classList.remove('active');
+        }
+
+        function renderCompanyCheckboxes() {
+            const container = document.getElementById('user-companies-list');
+            container.innerHTML = '';
+
+            companies.forEach(company => {
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                div.innerHTML = `
+                    <label>
+                        <input type="checkbox" name="company" value="${company.id}">
+                        ${company.name}
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateCompanyVisibility() {
+            const role = document.getElementById('user-role').value;
+            const group = document.getElementById('user-companies-group');
+            if (role === 'super_admin' || role === 'demo') {
+                group.style.display = 'none';
+            } else {
+                group.style.display = 'block';
+            }
+        }
+
+        function saveUser(event) {
+            event.preventDefault();
+
+            const userId = document.getElementById('user-id').value;
+            const username = document.getElementById('user-username').value;
+            const email = document.getElementById('user-email').value;
+            const password = document.getElementById('user-password').value;
+            const role = document.getElementById('user-role').value;
+            const authType = document.getElementById('user-auth-type').value;
+            const active = document.getElementById('user-active').checked;
+
+            const selectedCompanies = Array.from(document.querySelectorAll('input[name="company"]:checked'))
+                .map(cb => parseInt(cb.value));
+
+            const userData = {
+                username,
+                email,
+                role,
+                auth_type: authType,
+                active: active ? 1 : 0,
+                company_ids: selectedCompanies
+            };
+
+            if (password) {
+                userData.password = password;
+            }
+
+            const url = userId ? `/api/admin/users/${userId}` : '/api/admin/users';
+            const method = userId ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage(userId ? 'Utilisateur modifié avec succès' : 'Utilisateur créé avec succès', 'success');
+                    closeUserModal();
+                    loadUsers();
+                } else {
+                    showMessage('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur: ' + error, 'error');
+            });
+        }
+
+        function editUser(userId) {
+            openUserModal(userId);
+        }
+
+        function deleteUser(userId, username) {
+            if (!confirm(`Voulez-vous vraiment supprimer l'utilisateur "${username}" ?`)) {
+                return;
+            }
+
+            fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage('Utilisateur supprimé avec succès', 'success');
+                    loadUsers();
+                } else {
+                    showMessage('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur: ' + error, 'error');
+            });
+        }
+
+        // ==================== COMPANIES ====================
+
+        function loadCompanies() {
+            return fetch('/api/admin/companies')
+                .then(response => response.json())
+                .then(data => {
+                    companies = data;
+                    if (document.getElementById('tab-companies').classList.contains('active')) {
+                        renderCompanies();
+                    }
+                    return companies;
+                })
+                .catch(error => {
+                    showMessage('Erreur lors du chargement des sociétés: ' + error, 'error');
+                });
+        }
+
+        function renderCompanies() {
+            const tbody = document.querySelector('#companies-table tbody');
+            tbody.innerHTML = '';
+
+            if (companies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Aucune société</td></tr>';
+                return;
+            }
+
+            companies.forEach(company => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${company.id}</td>
+                    <td><strong>${company.name}</strong></td>
+                    <td>${company.description || '-'}</td>
+                    <td>${new Date(company.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td>${company.user_count || 0}</td>
+                    <td>${company.event_count || 0}</td>
+                    <td>
+                        <button class="btn btn-primary btn-small" onclick="editCompany(${company.id})">✏️ Éditer</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteCompany(${company.id}, '${company.name}')">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        let currentNetworks = [];
+
+        function toggleLdapConfig() {
+            const enabled = document.getElementById('company-ldap-enabled').checked;
+            document.getElementById('ldap-config').style.display = enabled ? 'block' : 'none';
+        }
+
+        function openCompanyModal(companyId = null) {
+            const modal = document.getElementById('company-modal');
+            const form = document.getElementById('company-form');
+            form.reset();
+            currentNetworks = [];
+
+            // Reset LDAP fields
+            document.getElementById('company-ldap-enabled').checked = false;
+            document.getElementById('ldap-config').style.display = 'none';
+            document.getElementById('company-ldap-port').value = 389;
+
+            if (companyId) {
+                document.getElementById('company-modal-title').textContent = 'Éditer Société';
+                const company = companies.find(c => c.id === companyId);
+                document.getElementById('company-id').value = company.id;
+                document.getElementById('company-name').value = company.name;
+                document.getElementById('company-description').value = company.description || '';
+
+                // Load existing networks
+                try {
+                    currentNetworks = company.local_networks ? JSON.parse(company.local_networks) : [];
+                } catch (e) {
+                    currentNetworks = [];
+                }
+
+                // Load LDAP config
+                if (company.ldap_enabled) {
+                    document.getElementById('company-ldap-enabled').checked = true;
+                    document.getElementById('company-ldap-server').value = company.ldap_server || '';
+                    document.getElementById('company-ldap-port').value = company.ldap_port || 389;
+                    document.getElementById('company-ldap-ssl').checked = company.ldap_use_ssl || false;
+                    document.getElementById('company-ldap-base-dn').value = company.ldap_base_dn || '';
+                    document.getElementById('company-ldap-user-dn').value = company.ldap_user_dn_template || '';
+                    document.getElementById('company-ldap-admin-group').value = company.ldap_admin_group || '';
+                    document.getElementById('company-ldap-bind-dn').value = company.ldap_bind_dn || '';
+                    document.getElementById('company-ldap-bind-password').value = company.ldap_bind_password || '';
+                    toggleLdapConfig();
+                }
+            } else {
+                document.getElementById('company-modal-title').textContent = 'Nouvelle Société';
+            }
+
+            renderNetworks();
+            modal.classList.add('active');
+
+            // Add event listener for LDAP toggle
+            document.getElementById('company-ldap-enabled').addEventListener('change', toggleLdapConfig);
+        }
+
+        function renderNetworks() {
+            const container = document.getElementById('company-networks-list');
+            container.innerHTML = '';
+
+            currentNetworks.forEach((network, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; background: #f3f4f6; border-radius: 5px; margin-bottom: 5px;';
+                div.innerHTML = `
+                    <span style="flex: 1; font-family: monospace;">${network}</span>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeNetwork(${index})" style="padding: 5px 10px;">🗑️</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addNetwork() {
+            const input = document.getElementById('new-network');
+            const network = input.value.trim();
+
+            if (!network) return;
+
+            // Basic validation
+            if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/.test(network)) {
+                showMessage('Format invalide. Utilisez la notation CIDR (ex: 192.168.1.0/24)', 'error');
+                return;
+            }
+
+            if (currentNetworks.includes(network)) {
+                showMessage('Ce réseau existe déjà', 'error');
+                return;
+            }
+
+            currentNetworks.push(network);
+            renderNetworks();
+            input.value = '';
+        }
+
+        function removeNetwork(index) {
+            currentNetworks.splice(index, 1);
+            renderNetworks();
+        }
+
+        function closeCompanyModal() {
+            document.getElementById('company-modal').classList.remove('active');
+        }
+
+        function saveCompany(event) {
+            event.preventDefault();
+
+            const companyId = document.getElementById('company-id').value;
+            const name = document.getElementById('company-name').value;
+            const description = document.getElementById('company-description').value;
+
+            const companyData = {
+                name,
+                description,
+                local_networks: JSON.stringify(currentNetworks),
+                ldap_enabled: document.getElementById('company-ldap-enabled').checked ? 1 : 0,
+                ldap_server: document.getElementById('company-ldap-server').value,
+                ldap_port: parseInt(document.getElementById('company-ldap-port').value) || 389,
+                ldap_use_ssl: document.getElementById('company-ldap-ssl').checked ? 1 : 0,
+                ldap_base_dn: document.getElementById('company-ldap-base-dn').value,
+                ldap_user_dn_template: document.getElementById('company-ldap-user-dn').value,
+                ldap_bind_dn: document.getElementById('company-ldap-bind-dn').value,
+                ldap_bind_password: document.getElementById('company-ldap-bind-password').value,
+                ldap_admin_group: document.getElementById('company-ldap-admin-group').value
+            };
+
+            const url = companyId ? `/api/admin/companies/${companyId}` : '/api/admin/companies';
+            const method = companyId ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(companyData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage(companyId ? 'Société modifiée avec succès' : 'Société créée avec succès', 'success');
+                    closeCompanyModal();
+                    loadCompanies();
+                } else {
+                    showMessage('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur: ' + error, 'error');
+            });
+        }
+
+        function editCompany(companyId) {
+            openCompanyModal(companyId);
+        }
+
+        function deleteCompany(companyId, companyName) {
+            if (!confirm(`Voulez-vous vraiment supprimer la société "${companyName}" ?\n\nATTENTION: Tous les événements VPN associés seront également supprimés.`)) {
+                return;
+            }
+
+            fetch(`/api/admin/companies/${companyId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage('Société supprimée avec succès', 'success');
+                    loadCompanies();
+                } else {
+                    showMessage('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur: ' + error, 'error');
+            });
+        }
+
+        // ==================== ROUTERS ====================
+
+        function loadRouters() {
+            return fetch('/api/admin/routers')
+                .then(response => response.json())
+                .then(data => {
+                    routers = data;
+                    if (document.getElementById('tab-routers').classList.contains('active')) {
+                        renderRouters();
+                    }
+                    return routers;
+                })
+                .catch(error => {
+                    showMessage('Erreur lors du chargement des routeurs: ' + error, 'error');
+                });
+        }
+
+        function renderRouters() {
+            const tbody = document.querySelector('#routers-table tbody');
+            tbody.innerHTML = '';
+
+            if (routers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Aucun routeur</td></tr>';
+                return;
+            }
+
+            routers.forEach(router => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${router.id}</td>
+                    <td><strong>${router.name}</strong></td>
+                    <td>${router.unifi_host || '-'}</td>
+                    <td>${router.company_name}</td>
+                    <td>${router.description || '-'}</td>
+                    <td>${router.event_count || 0}</td>
+                    <td>
+                        <button class="btn btn-primary btn-small" onclick="editRouter(${router.id})">✏️ Éditer</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteRouter(${router.id}, '${router.name}')">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openRouterModal(routerId = null) {
+            loadCompanies().then(() => {
+                const modal = document.getElementById('router-modal');
+                const form = document.getElementById('router-form');
+                const companySelect = document.getElementById('router-company-id');
+                form.reset();
+
+                // Remplir le select des sociétés
+                companySelect.innerHTML = '';
+                companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name;
+                    companySelect.appendChild(option);
+                });
+
+                if (routerId) {
+                    document.getElementById('router-modal-title').textContent = 'Éditer Routeur';
+                    const router = routers.find(r => r.id === routerId);
+                    document.getElementById('router-id').value = router.id;
+                    document.getElementById('router-name').value = router.name;
+                    document.getElementById('router-unifi-host').value = router.unifi_host || '';
+                    document.getElementById('router-alarm-id').value = router.alarm_id || '';
+                    document.getElementById('router-company-id').value = router.company_id;
+                    document.getElementById('router-description').value = router.description || '';
+                } else {
+                    document.getElementById('router-modal-title').textContent = 'Nouveau Routeur';
+                }
+
+                modal.classList.add('active');
+            });
+        }
+
+        function closeRouterModal() {
+            document.getElementById('router-modal').classList.remove('active');
+        }
+
+        function saveRouter(event) {
+            event.preventDefault();
+
+            const routerId = document.getElementById('router-id').value;
+            const name = document.getElementById('router-name').value;
+            const unifiHost = document.getElementById('router-unifi-host').value;
+            const alarmId = document.getElementById('router-alarm-id').value;
+            const companyId = document.getElementById('router-company-id').value;
+            const description = document.getElementById('router-description').value;
+
+            const routerData = {
+                name,
+                unifi_host: unifiHost,
+                alarm_id: alarmId,
+                company_id: parseInt(companyId),
+                description
+            };
+
+            const url = routerId ? `/api/admin/routers/${routerId}` : '/api/admin/routers';
+            const method = routerId ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(routerData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage(routerId ? 'Routeur modifié avec succès' : 'Routeur créé avec succès', 'success');
+                    closeRouterModal();
+                    loadRouters();
+                } else {
+                    showMessage('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur: ' + error, 'error');
+            });
+        }
+
+        function editRouter(routerId) {
+            openRouterModal(routerId);
+        }
+
+        function deleteRouter(routerId, routerName) {
+            if (!confirm(`Voulez-vous vraiment supprimer le routeur "${routerName}" ?`)) {
+                return;
+            }
+
+            fetch(`/api/admin/routers/${routerId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage('Routeur supprimé avec succès', 'success');
+                    loadRouters();
+                } else {
+                    showMessage('Erreur: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur: ' + error, 'error');
+            });
+        }
+
+        // Initialize
+        loadUsers();
+        loadCompanies();
+        loadRouters();
+    </script>
+
+    <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 40px;">
+        VPN Logger v{{ app_version }} - Système de monitoring VPN UniFi
+    </div>
+</body>
+</html>

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendrier VPN - UniFi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+        }
+
+        .nav-links a {
+            margin-left: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .nav-links a:hover {
+            background: #764ba2;
+        }
+
+        .calendar-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calendar-controls button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .calendar-controls button:hover {
+            background: #764ba2;
+        }
+
+        .calendar-controls h2 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .calendar-grid {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .calendar-header div {
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+            padding: 10px;
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .calendar-day.empty {
+            border: none;
+            cursor: default;
+        }
+
+        .calendar-day.empty:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .calendar-day .day-number {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .calendar-day .day-stats {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .calendar-day .duration {
+            font-weight: bold;
+            color: #10b981;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .calendar-day.has-data {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-color: #667eea;
+        }
+
+        .calendar-day.selected {
+            background: #667eea;
+            color: white;
+        }
+
+        .calendar-day.selected .day-stats,
+        .calendar-day.selected .duration {
+            color: white;
+        }
+
+        .timeline-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .timeline-container.visible {
+            display: block;
+        }
+
+        .timeline-header {
+            margin-bottom: 20px;
+        }
+
+        .timeline-header h3 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .timeline-user {
+            margin-bottom: 30px;
+        }
+
+        .timeline-user-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .timeline-24h {
+            position: relative;
+            height: 60px;
+            background: #e5e7eb;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+
+        .timeline-hours {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
+            padding: 0 5px;
+        }
+
+        .timeline-session {
+            position: absolute;
+            height: 100%;
+            background: #10b981;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .timeline-session.local {
+            background: #10b981;
+        }
+
+        .timeline-session.remote {
+            background: #f59e0b;
+        }
+
+        .timeline-session:hover {
+            transform: scaleY(1.1);
+            z-index: 10;
+            filter: brightness(0.9);
+        }
+
+        .timeline-session.active {
+            background: #3b82f6;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .legend-color.connected {
+            background: #10b981;
+        }
+
+        .legend-color.disconnected {
+            background: #e5e7eb;
+        }
+
+        .legend-color.active {
+            background: #3b82f6;
+        }
+
+        .legend-color.local {
+            background: #10b981;
+        }
+
+        .legend-color.remote {
+            background: #f59e0b;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f3f4f6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .user-info .username {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .user-info .role-badge {
+            padding: 3px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .btn-logout {
+            padding: 8px 15px;
+            background: #dc2626;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-logout:hover {
+            background: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>📅 Calendrier VPN</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="user-info">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="role-badge">{{ user.role }}</span>
+                </div>
+                <div class="nav-links">
+                    <a href="/">📊 Logs</a>
+                    <a href="/calendar">📅 Calendrier</a>
+                    {% if user.role in ['super_admin', 'admin'] %}
+                    <a href="/admin">⚙️ Admin</a>
+                    {% endif %}
+                    <a href="/logout" class="btn-logout">Déconnexion</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="calendar-controls">
+            <div>
+                <button onclick="previousMonth()">◀ Mois précédent</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <select id="company-filter" style="{% if user.role == 'demo' or user.companies|length <= 1 %}display:none;{% endif %} padding: 10px; border-radius: 5px; border: 2px solid #667eea;">
+                    <option value="">Toutes les sociétés</option>
+                    {% if user.companies %}
+                        {% for company in user.companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+                <h2 id="current-month">Octobre 2025</h2>
+            </div>
+            <div>
+                <button onclick="nextMonth()">Mois suivant ▶</button>
+            </div>
+        </div>
+
+        <div class="calendar-grid">
+            <div class="calendar-header">
+                <div>Lun</div>
+                <div>Mar</div>
+                <div>Mer</div>
+                <div>Jeu</div>
+                <div>Ven</div>
+                <div>Sam</div>
+                <div>Dim</div>
+            </div>
+            <div class="calendar-days" id="calendar-days">
+                <!-- Généré par JavaScript -->
+            </div>
+        </div>
+
+        <div class="timeline-container" id="timeline-container">
+            <div class="timeline-header">
+                <h3 id="timeline-title">Détails du jour</h3>
+            </div>
+            <div id="timeline-content">
+                <!-- Généré par JavaScript -->
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color local"></div>
+                    <span>🏠 Local</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color remote"></div>
+                    <span>🌍 Remote</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color active"></div>
+                    <span>En cours</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth() + 1;
+        let selectedDate = null;
+        let selectedCompanyId = null;  // null = toutes les sociétés
+
+        const monthNames = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ];
+
+        // Initialiser la sélection par défaut de la société
+        function initCompanySelector() {
+            const companySelect = document.getElementById('company-filter');
+            const userRole = '{{ user.role }}';
+            const companies = {{ user.companies|tojson|safe }};
+
+            // Si le sélecteur n'est pas visible (demo ou 1 seule société), pas d'initialisation
+            if (!companySelect || companySelect.style.display === 'none') {
+                // Pour les utilisateurs avec une seule société, la présélectionner automatiquement
+                if (companies && companies.length === 1) {
+                    selectedCompanyId = companies[0].id;
+                }
+                return;
+            }
+
+            // Logique de sélection par défaut pour les utilisateurs avec plusieurs sociétés
+            if (!companies || companies.length === 0) {
+                // Pas de société (ne devrait pas arriver si filtrage OK)
+                selectedCompanyId = null;
+            } else if (companies.length === 1) {
+                // Une seule société : sélectionner automatiquement
+                selectedCompanyId = companies[0].id;
+                companySelect.value = selectedCompanyId;
+            } else {
+                // Plusieurs sociétés
+                if (userRole === 'super_admin' || userRole === 'admin') {
+                    // Super admin et admin voient toutes leurs sociétés par défaut
+                    selectedCompanyId = null;
+                } else {
+                    // Viewer : sélectionner automatiquement la première
+                    selectedCompanyId = companies[0].id;
+                    companySelect.value = selectedCompanyId;
+                }
+            }
+
+            // Écouter les changements
+            companySelect.addEventListener('change', function() {
+                selectedCompanyId = this.value ? parseInt(this.value) : null;
+                loadCalendar();
+            });
+        }
+
+        function previousMonth() {
+            currentMonth--;
+            if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+            loadCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+            loadCalendar();
+        }
+
+        function loadCalendar() {
+            document.getElementById('current-month').textContent =
+                `${monthNames[currentMonth - 1]} ${currentYear}`;
+
+            let url = `/api/calendar/month?year=${currentYear}&month=${currentMonth}`;
+            if (selectedCompanyId) {
+                url += `&company_id=${selectedCompanyId}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    renderCalendar(data);
+                });
+        }
+
+        function renderCalendar(monthData) {
+            const container = document.getElementById('calendar-days');
+            container.innerHTML = '';
+
+            // Calculer le premier jour du mois
+            const firstDay = new Date(currentYear, currentMonth - 1, 1);
+            const lastDay = new Date(currentYear, currentMonth, 0);
+            const daysInMonth = lastDay.getDate();
+
+            // Jour de la semaine (0 = dimanche, 1 = lundi, etc.)
+            let firstDayOfWeek = firstDay.getDay();
+            // Convertir pour commencer lundi (0 = lundi)
+            firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+            // Ajouter les jours vides au début
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day empty';
+                container.appendChild(emptyDay);
+            }
+
+            // Ajouter les jours du mois
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayData = monthData[dateStr];
+
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+
+                if (dayData) {
+                    dayElement.classList.add('has-data');
+
+                    const hours = Math.floor(dayData.total_duration / 3600);
+                    const minutes = Math.floor((dayData.total_duration % 3600) / 60);
+
+                    dayElement.innerHTML = `
+                        <div class="day-number">${day}</div>
+                        <div class="day-stats">
+                            👥 ${dayData.user_count} utilisateur(s)<br>
+                            📶 ${dayData.connections} connexion(s)
+                        </div>
+                        <div class="duration">${hours}h ${minutes}m</div>
+                    `;
+                } else {
+                    dayElement.innerHTML = `<div class="day-number">${day}</div>`;
+                }
+
+                dayElement.onclick = () => selectDay(dateStr, day);
+                container.appendChild(dayElement);
+            }
+        }
+
+        function selectDay(dateStr, day) {
+            selectedDate = dateStr;
+
+            // Mettre à jour la sélection visuelle
+            document.querySelectorAll('.calendar-day').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            // Charger la timeline du jour
+            loadDayTimeline(dateStr, day);
+        }
+
+        function loadDayTimeline(dateStr, day) {
+            document.getElementById('timeline-title').textContent =
+                `Détails du ${day} ${monthNames[currentMonth - 1]} ${currentYear}`;
+
+            let url = `/api/calendar/day?date=${dateStr}`;
+            if (selectedCompanyId) {
+                url += `&company_id=${selectedCompanyId}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    renderTimeline(data);
+                    document.getElementById('timeline-container').classList.add('visible');
+                });
+        }
+
+        function renderTimeline(userData) {
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = '';
+
+            if (Object.keys(userData).length === 0) {
+                container.innerHTML = '<div class="no-data">Aucune connexion ce jour</div>';
+                return;
+            }
+
+            for (const [user, sessions] of Object.entries(userData)) {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'timeline-user';
+
+                let totalDuration = 0;
+                sessions.forEach(s => totalDuration += s.duration || 0);
+                const hours = Math.floor(totalDuration / 3600);
+                const minutes = Math.floor((totalDuration % 3600) / 60);
+
+                userDiv.innerHTML = `
+                    <div class="timeline-user-header">
+                        ${user} - Total: ${hours}h ${minutes}m
+                    </div>
+                    <div class="timeline-24h" id="timeline-${user.replace(/\s+/g, '-')}">
+                    </div>
+                    <div class="timeline-hours">
+                        <span>00:00</span>
+                        <span>04:00</span>
+                        <span>08:00</span>
+                        <span>12:00</span>
+                        <span>16:00</span>
+                        <span>20:00</span>
+                        <span>24:00</span>
+                    </div>
+                `;
+
+                container.appendChild(userDiv);
+
+                // Ajouter les sessions
+                const timelineBar = userDiv.querySelector('.timeline-24h');
+                sessions.forEach(session => {
+                    const startTime = new Date(session.start);
+                    const startHour = startTime.getHours() + startTime.getMinutes() / 60;
+                    const startPercent = (startHour / 24) * 100;
+
+                    let widthPercent;
+                    let isActive = false;
+
+                    if (session.end) {
+                        const endTime = new Date(session.end);
+                        const endHour = endTime.getHours() + endTime.getMinutes() / 60;
+                        widthPercent = ((endHour - startHour) / 24) * 100;
+                    } else {
+                        // Session active
+                        const now = new Date();
+                        const nowHour = now.getHours() + now.getMinutes() / 60;
+                        widthPercent = ((nowHour - startHour) / 24) * 100;
+                        isActive = true;
+                    }
+
+                    const sessionDiv = document.createElement('div');
+                    // Ajouter les classes appropriées
+                    let classes = 'timeline-session';
+                    if (isActive) {
+                        classes += ' active';
+                    } else {
+                        classes += session.is_local ? ' local' : ' remote';
+                    }
+                    sessionDiv.className = classes;
+                    sessionDiv.style.left = startPercent + '%';
+                    sessionDiv.style.width = widthPercent + '%';
+
+                    if (session.duration) {
+                        const h = Math.floor(session.duration / 3600);
+                        const m = Math.floor((session.duration % 3600) / 60);
+                        sessionDiv.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    } else {
+                        sessionDiv.textContent = 'En cours';
+                    }
+
+                    const locationText = session.is_local ? '🏠 Local' : '🌍 Remote';
+                    sessionDiv.title = `${locationText} - ${session.vpn_type} - ${session.ip}\n` +
+                        `Début: ${startTime.toLocaleTimeString('fr-FR')}\n` +
+                        (session.end ? `Fin: ${new Date(session.end).toLocaleTimeString('fr-FR')}` : 'En cours');
+
+                    timelineBar.appendChild(sessionDiv);
+                });
+            }
+        }
+
+        // Charger le calendrier au démarrage
+        initCompanySelector();
+        loadCalendar();
+    </script>
+
+    <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 40px;">
+        VPN Logger v{{ app_version }} - Système de monitoring VPN UniFi
+    </div>
+</body>
+</html>
