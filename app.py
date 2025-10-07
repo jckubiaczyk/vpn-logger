@@ -1261,7 +1261,7 @@ def api_statistics():
 
         # Récupérer l'utilisateur et ses sociétés
         user = get_user_by_id(session['user_id'])
-        user_companies = get_user_companies(session['user_id'])
+        user_companies = get_user_companies()
 
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -1327,7 +1327,7 @@ def api_statistics():
             })
 
         # 3. Top 10 utilisateurs
-        if is_demo_mode(session['user_id']):
+        if is_demo_mode():
             # Mode démo : anonymiser
             c.execute(f'''
                 SELECT
