@@ -136,14 +136,20 @@ Pour activer l'authentification LDAP/Active Directory :
 
 ## 📄 License
 
-Ce projet est sous licence propriétaire NIDAPLAST.
+Ce projet est sous licence propriétaire sys2lan.
 
 ## 👤 Auteur
 
-**Jean-Christophe KUBIACZYK**
+**sys2lan**
+- Développé par: Jean-Christophe KUBIACZYK
 - GitHub: [@jckubiaczyk](https://github.com/jckubiaczyk)
-- Société: NIDAPLAST
+- Email: jckubiaczyk@nidaplast.com
+
+## 🏢 Société
+
+**sys2lan** - Solutions informatiques et développement sur mesure
+- Client: NIDAPLAST
 
 ## 🤝 Contribution
 
-Projet interne NIDAPLAST. Pour toute question ou suggestion, contactez l'équipe IT.
+Projet développé par sys2lan pour NIDAPLAST. Pour toute question ou suggestion, contactez l'équipe de développement.
