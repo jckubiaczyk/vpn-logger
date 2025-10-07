@@ -498,6 +498,7 @@
             // Désactiver l'auto-refresh quand on applique un filtre manuel
             const autoRefreshCheckbox = document.getElementById('auto-refresh');
             autoRefreshCheckbox.checked = false;
+            clearInterval(autoRefreshInterval); // Arrêter le timer
 
             let url = '/api/events?';
             if (type) url += `type=${type}`;
