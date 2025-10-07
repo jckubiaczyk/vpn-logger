@@ -303,13 +303,13 @@
             </div>
 
             <div class="chart-container">
-                <h3>👥 Top 10 Utilisateurs</h3>
+                <h3>👥 Top 10 Utilisateurs (temps en remote)</h3>
                 <div class="chart-wrapper">
                     <canvas id="users-chart"></canvas>
                 </div>
             </div>
 
-            <div class="chart-container">
+            <div class="chart-container" id="companies-chart-container">
                 <h3>🏢 Connexions par Société</h3>
                 <div class="chart-wrapper">
                     <canvas id="companies-chart"></canvas>
@@ -330,7 +330,7 @@
                 </div>
             </div>
 
-            <div class="chart-container">
+            <div class="chart-container" id="vpn-type-chart-container">
                 <h3>📊 Connexions par Type VPN</h3>
                 <div class="chart-wrapper">
                     <canvas id="vpn-type-chart"></canvas>
@@ -477,7 +477,7 @@
             });
         }
 
-        // Graphique top utilisateurs
+        // Graphique top utilisateurs (temps en remote)
         function updateUsersChart(data) {
             const ctx = document.getElementById('users-chart');
 
@@ -490,8 +490,8 @@
                 data: {
                     labels: data.map(d => d.user),
                     datasets: [{
-                        label: 'Connexions',
-                        data: data.map(d => d.count),
+                        label: 'Heures',
+                        data: data.map(d => d.hours),
                         backgroundColor: '#667eea'
                     }]
                 },
@@ -502,13 +502,22 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.x + 'h';
+                                }
+                            }
                         }
                     },
                     scales: {
                         x: {
                             beginAtZero: true,
                             ticks: {
-                                precision: 0
+                                callback: function(value) {
+                                    return value + 'h';
+                                }
                             }
                         }
                     }
@@ -518,6 +527,15 @@
 
         // Graphique par société
         function updateCompaniesChart(data) {
+            const container = document.getElementById('companies-chart-container');
+
+            // Masquer si une seule société
+            if (data.length <= 1) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
             const ctx = document.getElementById('companies-chart');
 
             if (charts.companies) {
@@ -623,6 +641,15 @@
 
         // Graphique par type VPN
         function updateVpnTypeChart(data) {
+            const container = document.getElementById('vpn-type-chart-container');
+
+            // Masquer si un seul type VPN (wireguard uniquement)
+            if (data.length <= 1) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
             const ctx = document.getElementById('vpn-type-chart');
 
             if (charts.vpnType) {

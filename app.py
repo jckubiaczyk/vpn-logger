@@ -1326,43 +1326,46 @@ def api_statistics():
                 'count': row[1]
             })
 
-        # 3. Top 10 utilisateurs
+        # 3. Top 10 utilisateurs (par temps de session remote)
+        # Calculer le temps total en remote pour chaque utilisateur
         if is_demo_mode():
             # Mode démo : anonymiser
             c.execute(f'''
                 SELECT
                     user,
-                    COUNT(*) as count
-                FROM vpn_events
+                    SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) as total_duration
+                FROM vpn_events v
                 WHERE {where_sql}
                 GROUP BY user
-                ORDER BY count DESC
+                ORDER BY total_duration DESC
                 LIMIT 10
             ''', params)
 
             top_users = []
             for row in c.fetchall():
+                hours = row[1] / 3600 if row[1] else 0
                 top_users.append({
                     'user': anonymize_username(row[0]),
-                    'count': row[1]
+                    'hours': round(hours, 1)
                 })
         else:
             c.execute(f'''
                 SELECT
                     user,
-                    COUNT(*) as count
-                FROM vpn_events
+                    SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) as total_duration
+                FROM vpn_events v
                 WHERE {where_sql}
                 GROUP BY user
-                ORDER BY count DESC
+                ORDER BY total_duration DESC
                 LIMIT 10
             ''', params)
 
             top_users = []
             for row in c.fetchall():
+                hours = row[1] / 3600 if row[1] else 0
                 top_users.append({
                     'user': row[0],
-                    'count': row[1]
+                    'hours': round(hours, 1)
                 })
 
         # 4. Par société
