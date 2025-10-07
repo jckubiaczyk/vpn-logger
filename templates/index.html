@@ -303,7 +303,10 @@
                     {% endfor %}
                 {% endif %}
             </select>
-            <input type="text" id="search-user" placeholder="Rechercher par utilisateur..." />
+            <input type="text" id="search-user" placeholder="Rechercher par utilisateur..." list="users-list" />
+            <datalist id="users-list">
+                <!-- Liste dynamique des utilisateurs -->
+            </datalist>
             <select id="event-type-filter">
                 <option value="">Tous les événements</option>
                 <option value="connect">Connexions</option>
@@ -528,8 +531,28 @@
                 });
         }
 
-        // Charger les stats au démarrage
+        // Charger la liste des utilisateurs pour l'autocomplétion
+        function loadUsersList() {
+            fetch('/api/events?limit=1000')
+                .then(response => response.json())
+                .then(data => {
+                    // Extraire les utilisateurs uniques
+                    const users = [...new Set(data.map(e => e.user))].sort();
+
+                    // Remplir la datalist
+                    const datalist = document.getElementById('users-list');
+                    datalist.innerHTML = '';
+                    users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        datalist.appendChild(option);
+                    });
+                });
+        }
+
+        // Charger les stats et la liste des utilisateurs au démarrage
         refreshData();
+        loadUsersList();
     </script>
 
     <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 40px; background: white; border-radius: 10px;">
