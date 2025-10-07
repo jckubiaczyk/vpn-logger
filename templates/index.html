@@ -492,6 +492,10 @@
             const user = document.getElementById('search-user').value;
             const type = document.getElementById('event-type-filter').value;
 
+            // Désactiver l'auto-refresh quand on applique un filtre manuel
+            const autoRefreshCheckbox = document.getElementById('auto-refresh');
+            autoRefreshCheckbox.checked = false;
+
             let url = '/api/events?';
             if (type) url += `type=${type}`;
 
