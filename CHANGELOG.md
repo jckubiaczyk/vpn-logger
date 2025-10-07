@@ -2,6 +2,50 @@
 
 Tous les changements notables de ce projet seront documentés dans ce fichier.
 
+## [2.2.0] - 2025-10-07
+
+### 📊 Graphiques et Statistiques
+
+#### Nouvelle page Statistiques
+- **Page dédiée** : Nouvelle page `/statistics` avec interface graphique complète
+- **Navigation** : Lien "📊 Statistiques" ajouté dans toutes les pages
+- **Design cohérent** : Style unifié avec le reste de l'application
+
+#### Cartes de statistiques
+- **Total Connexions** : Nombre total de connexions sur la période
+- **Utilisateurs Actifs** : Nombre d'utilisateurs différents
+- **Durée Moyenne** : Durée moyenne des sessions
+- **Sessions Actives** : Nombre de sessions en cours actuellement
+
+#### Graphiques interactifs
+- **📈 Connexions par jour** : Graphique en ligne montrant l'évolution des connexions
+- **👥 Top 10 Utilisateurs** : Graphique en barres horizontales des utilisateurs les plus actifs
+- **🏢 Connexions par Société** : Graphique en donut de répartition par société
+- **⏱️ Durées de Session** : Graphique en barres des tranches de durée (0-1h, 1-2h, 2-4h, 4-8h, 8h+)
+- **🌍 Type de Connexion** : Graphique en camembert Local vs Remote
+- **📊 Connexions par Type VPN** : Graphique en barres par type VPN
+
+#### Filtres avancés
+- **Périodes prédéfinies** : 7, 30 ou 90 derniers jours
+- **Période personnalisée** : Sélection de dates de début et fin
+- **Filtre société** : Super_admin peut filtrer par société (dropdown dynamique)
+- **Bouton actualiser** : Rechargement manuel des données
+
+#### API Statistics
+- **Endpoint** : `/api/statistics` avec support de paramètres
+  - `period` : Nombre de jours (7, 30, 90)
+  - `start_date` et `end_date` : Période personnalisée (format YYYY-MM-DD)
+  - `company_id` : Filtrage par société (super_admin uniquement)
+- **Permissions** : Respect des rôles (super_admin voit tout, autres rôles limités à leurs sociétés)
+- **Mode démo** : Anonymisation automatique des noms d'utilisateur
+
+#### Technologies
+- **Chart.js 4.4.1** : Bibliothèque de graphiques via CDN
+- **Graphiques responsive** : Adaptation automatique à la taille d'écran
+- **Couleurs cohérentes** : Palette en accord avec la charte graphique (#667eea, #764ba2...)
+
+---
+
 ## [2.1.0] - 2025-10-07
 
 ### 🔐 Authentification LDAP/Active Directory

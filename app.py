@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)  # Clé secrète pour les sessions
 
 # Configuration
-APP_VERSION = '2.1.0'
+APP_VERSION = '2.2.0'
 DB_PATH = '/var/www/html/vpn-logger/vpn_logs.db'
 LOG_FILE = '/var/www/html/vpn-logger/vpn_events.log'
 CONFIG_FILE = '/var/www/html/vpn-logger/config.json'
@@ -1223,6 +1223,277 @@ def admin_delete_router(router_id):
         conn.close()
 
         return jsonify({'status': 'success', 'message': 'Routeur supprimé'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Route page statistiques
+@app.route('/statistics')
+@login_required
+def statistics():
+    """Page des statistiques"""
+    user = get_user_by_id(session['user_id'])
+    return render_template('statistics.html',
+                         username=user['username'],
+                         role=user['role'])
+
+# API Statistiques
+@app.route('/api/statistics')
+@login_required
+def api_statistics():
+    """API pour récupérer les statistiques selon les filtres"""
+    try:
+        from datetime import datetime, timedelta
+
+        # Récupérer les paramètres
+        period = request.args.get('period', '30')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        company_id = request.args.get('company_id')
+
+        # Calculer les dates
+        if start_date and end_date:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        else:
+            days = int(period)
+            end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=days)
+
+        # Récupérer l'utilisateur et ses sociétés
+        user = get_user_by_id(session['user_id'])
+        user_companies = get_user_companies(session['user_id'])
+
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Construire la clause WHERE selon les permissions
+        where_clauses = []
+        params = []
+
+        # Filtre date
+        where_clauses.append("datetime(timestamp) >= datetime(?)")
+        where_clauses.append("datetime(timestamp) <= datetime(?)")
+        params.extend([start_dt.strftime('%Y-%m-%d 00:00:00'), end_dt.strftime('%Y-%m-%d 23:59:59')])
+
+        # Filtre société selon rôle
+        if user['role'] == 'super_admin':
+            if company_id:
+                where_clauses.append("company_id = ?")
+                params.append(company_id)
+        else:
+            # Limiter aux sociétés de l'utilisateur
+            if user_companies:
+                placeholders = ','.join('?' * len(user_companies))
+                where_clauses.append(f"company_id IN ({placeholders})")
+                params.extend(user_companies)
+
+        where_sql = ' AND '.join(where_clauses)
+
+        # 1. Résumé général
+        c.execute(f'''
+            SELECT
+                COUNT(*) as total_connections,
+                COUNT(DISTINCT user) as active_users,
+                AVG(CASE WHEN duration > 0 THEN duration ELSE NULL END) as avg_duration,
+                COUNT(CASE WHEN session_closed = 0 THEN 1 END) as active_sessions
+            FROM vpn_events
+            WHERE {where_sql}
+        ''', params)
+
+        summary = c.fetchone()
+        summary_data = {
+            'total_connections': summary[0] if summary[0] else 0,
+            'active_users': summary[1] if summary[1] else 0,
+            'avg_duration': int(summary[2]) if summary[2] else 0,
+            'active_sessions': summary[3] if summary[3] else 0
+        }
+
+        # 2. Connexions par jour
+        c.execute(f'''
+            SELECT
+                date(timestamp) as date,
+                COUNT(*) as count
+            FROM vpn_events
+            WHERE {where_sql}
+            GROUP BY date(timestamp)
+            ORDER BY date
+        ''', params)
+
+        connections_by_day = []
+        for row in c.fetchall():
+            connections_by_day.append({
+                'date': row[0],
+                'count': row[1]
+            })
+
+        # 3. Top 10 utilisateurs
+        if is_demo_mode(session['user_id']):
+            # Mode démo : anonymiser
+            c.execute(f'''
+                SELECT
+                    user,
+                    COUNT(*) as count
+                FROM vpn_events
+                WHERE {where_sql}
+                GROUP BY user
+                ORDER BY count DESC
+                LIMIT 10
+            ''', params)
+
+            top_users = []
+            for row in c.fetchall():
+                top_users.append({
+                    'user': anonymize_username(row[0]),
+                    'count': row[1]
+                })
+        else:
+            c.execute(f'''
+                SELECT
+                    user,
+                    COUNT(*) as count
+                FROM vpn_events
+                WHERE {where_sql}
+                GROUP BY user
+                ORDER BY count DESC
+                LIMIT 10
+            ''', params)
+
+            top_users = []
+            for row in c.fetchall():
+                top_users.append({
+                    'user': row[0],
+                    'count': row[1]
+                })
+
+        # 4. Par société
+        c.execute(f'''
+            SELECT
+                c.name,
+                COUNT(*) as count
+            FROM vpn_events v
+            LEFT JOIN companies c ON v.company_id = c.id
+            WHERE {where_sql}
+            GROUP BY v.company_id
+            ORDER BY count DESC
+        ''', params)
+
+        by_company = []
+        for row in c.fetchall():
+            by_company.append({
+                'company': row[0] if row[0] else 'Non assigné',
+                'count': row[1]
+            })
+
+        # 5. Distribution des durées (en tranches d'heures)
+        c.execute(f'''
+            SELECT
+                duration
+            FROM vpn_events
+            WHERE {where_sql} AND duration > 0 AND session_closed = 1
+        ''', params)
+
+        durations = [row[0] for row in c.fetchall()]
+        duration_ranges = {
+            '0-1h': 0,
+            '1-2h': 0,
+            '2-4h': 0,
+            '4-8h': 0,
+            '8h+': 0
+        }
+
+        for duration in durations:
+            hours = duration / 3600
+            if hours < 1:
+                duration_ranges['0-1h'] += 1
+            elif hours < 2:
+                duration_ranges['1-2h'] += 1
+            elif hours < 4:
+                duration_ranges['2-4h'] += 1
+            elif hours < 8:
+                duration_ranges['4-8h'] += 1
+            else:
+                duration_ranges['8h+'] += 1
+
+        duration_distribution = [
+            {'range': k, 'count': v} for k, v in duration_ranges.items()
+        ]
+
+        # 6. Par localisation (Local vs Remote)
+        c.execute(f'''
+            SELECT
+                CASE
+                    WHEN ip_address = '' OR ip_address IS NULL THEN 'Inconnu'
+                    ELSE 'Détecté'
+                END as location,
+                COUNT(*) as count
+            FROM vpn_events
+            WHERE {where_sql}
+            GROUP BY location
+        ''', params)
+
+        # Vérifier quelles IPs sont locales
+        c.execute(f'''
+            SELECT ip_address, company_id
+            FROM vpn_events
+            WHERE {where_sql} AND ip_address != '' AND ip_address IS NOT NULL
+        ''', params)
+
+        local_count = 0
+        remote_count = 0
+        unknown_count = 0
+
+        for row in c.fetchall():
+            ip = row[0]
+            comp_id = row[1]
+            if ip:
+                if is_local_ip(ip, comp_id):
+                    local_count += 1
+                else:
+                    remote_count += 1
+            else:
+                unknown_count += 1
+
+        by_location = []
+        if local_count > 0:
+            by_location.append({'location': 'Local', 'count': local_count})
+        if remote_count > 0:
+            by_location.append({'location': 'Remote', 'count': remote_count})
+        if unknown_count > 0:
+            by_location.append({'location': 'Inconnu', 'count': unknown_count})
+
+        # 7. Par type VPN
+        c.execute(f'''
+            SELECT
+                CASE
+                    WHEN vpn_type = '' OR vpn_type IS NULL THEN 'Non spécifié'
+                    ELSE vpn_type
+                END as vpn_type,
+                COUNT(*) as count
+            FROM vpn_events
+            WHERE {where_sql}
+            GROUP BY vpn_type
+            ORDER BY count DESC
+        ''', params)
+
+        by_vpn_type = []
+        for row in c.fetchall():
+            by_vpn_type.append({
+                'vpn_type': row[0],
+                'count': row[1]
+            })
+
+        conn.close()
+
+        return jsonify({
+            'summary': summary_data,
+            'connections_by_day': connections_by_day,
+            'top_users': top_users,
+            'by_company': by_company,
+            'duration_distribution': duration_distribution,
+            'by_location': by_location,
+            'by_vpn_type': by_vpn_type
+        })
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

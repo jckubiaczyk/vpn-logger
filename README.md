@@ -1,4 +1,4 @@
-# VPN Logger v2.1.0
+# VPN Logger v2.2.0
 
 Système de monitoring et de logging des connexions VPN UniFi avec interface web multi-tenant.
 
@@ -27,9 +27,13 @@ Système de monitoring et de logging des connexions VPN UniFi avec interface web
 ### Interface web
 - **Dashboard temps réel** : Logs VPN en temps réel avec auto-refresh
 - **Calendrier interactif** : Vue mensuelle et timeline journalière 24h
+- **Page Statistiques** : Graphiques interactifs avec Chart.js (v2.2.0)
+  - Graphiques de connexions par jour
+  - Top utilisateurs et statistiques par société
+  - Distribution des durées de session
+  - Filtres par période (7j, 30j, 90j, personnalisée)
 - **Filtrage avancé** : Par société, utilisateur, type d'événement
 - **Export CSV** : Export des logs
-- **Statistiques** : Connexions, déconnexions, durées de session
 
 ### Administration
 - **Gestion utilisateurs** : CRUD complet, attribution rôles et sociétés
@@ -122,8 +126,8 @@ Pour activer l'authentification LDAP/Active Directory :
 
 ## 🗺️ Roadmap
 
-### v2.2.0 (En cours)
-- [ ] Graphiques statistiques
+### v2.2.0 ✅ (Complété - 2025-10-07)
+- [x] Graphiques statistiques
   - Graphiques de connexions par jour/semaine/mois
   - Statistiques par utilisateur
   - Statistiques par société
