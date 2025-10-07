@@ -123,6 +123,10 @@ Pour activer l'authentification LDAP/Active Directory :
 ## 🗺️ Roadmap
 
 ### v2.2.0
+- [ ] Support HTTPS/SSL
+  - Configuration certificats SSL
+  - Redirection HTTP → HTTPS
+  - HSTS (HTTP Strict Transport Security)
 - [ ] Logs d'audit complets
 - [ ] Export PDF rapports
 - [ ] Graphiques statistiques
