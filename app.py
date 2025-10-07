@@ -1887,7 +1887,8 @@ def api_reports_user_pdf():
 
         company_name = company[1] if company else "VPN Logger"
         company_logo_path = None
-        if company and company[2]:
+        # Ne pas afficher le logo en mode démo pour préserver l'anonymat
+        if company and company[2] and not is_demo_mode():
             # Utiliser file:// pour que WeasyPrint puisse charger l'image
             company_logo_path = f"file://{os.path.join(LOGOS_FOLDER, company[2])}"
 
@@ -2282,7 +2283,8 @@ def api_reports_company_pdf():
 
         company_name = company[0]
         company_logo_path = None
-        if company[1]:
+        # Ne pas afficher le logo en mode démo pour préserver l'anonymat
+        if company[1] and not is_demo_mode():
             # Utiliser file:// pour que WeasyPrint puisse charger l'image
             company_logo_path = f"file://{os.path.join(LOGOS_FOLDER, company[1])}"
 
