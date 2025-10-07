@@ -174,6 +174,18 @@ Pour activer l'authentification LDAP/Active Directory :
 - [ ] 2FA (TOTP)
 - [ ] Notifications email/Slack
 
+### v2.4.0
+- [ ] Compatibilité mobile améliorée
+  - Optimisation responsive de l'interface
+  - Design mobile-first pour les graphiques
+  - Adaptation des tableaux pour petits écrans
+  - Menu hamburger pour la navigation
+- [ ] Application mobile native
+  - Étude de faisabilité (React Native / Flutter)
+  - Prototype application iOS/Android
+  - Notifications push pour alertes
+  - Mode hors-ligne avec synchronisation
+
 ## 📄 License
 
 Ce projet est sous licence propriétaire sys2lan.
