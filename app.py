@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)  # Clé secrète pour les sessions
 
 # Configuration
-APP_VERSION = '2.2.0'
+APP_VERSION = '2.2.1'
 DB_PATH = '/var/www/html/vpn-logger/vpn_logs.db'
 LOG_FILE = '/var/www/html/vpn-logger/vpn_events.log'
 CONFIG_FILE = '/var/www/html/vpn-logger/config.json'

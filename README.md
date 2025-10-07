@@ -1,4 +1,4 @@
-# VPN Logger v2.2.0
+# VPN Logger v2.2.1
 
 Système de monitoring et de logging des connexions VPN UniFi avec interface web multi-tenant.
 
@@ -133,11 +133,16 @@ Pour activer l'authentification LDAP/Active Directory :
   - Statistiques par société
   - Durées moyennes de session
 
-### v2.2.1
-- [ ] Dark mode
+### v2.2.1 ✅ (Complété - 2025-10-07)
+- [x] Dark mode
   - Thème sombre pour toutes les pages
-  - Switch automatique ou manuel
-  - Préférences utilisateur sauvegardées
+  - Toggle manuel (bouton 🌙/☀️)
+  - Préférences utilisateur sauvegardées (localStorage)
+  - Variables CSS centralisées
+- [x] CSS centralisé
+  - Fichier static/css/style.css pour tous les styles communs
+  - Réduction de la duplication de code
+  - Maintenance simplifiée
 
 ### v2.2.2
 - [ ] Export PDF rapports
