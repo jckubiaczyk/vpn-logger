@@ -384,6 +384,7 @@
                     <a href="/">📋 Logs</a>
                     <a href="/calendar">📅 Calendrier</a>
                     <a href="/statistics">📊 Statistiques</a>
+                    <a href="/reports">📈 Rapports</a>
                     <a href="/admin" style="background: #764ba2;">⚙️ Admin</a>
                     <a href="/logout" class="btn-logout">Déconnexion</a>
                 </div>
@@ -567,6 +568,15 @@
                 <div class="form-group">
                     <label>Description</label>
                     <input type="text" id="company-description">
+                </div>
+
+                <div class="form-group">
+                    <label>Logo de l'entreprise</label>
+                    <input type="file" id="company-logo" accept="image/*">
+                    <div id="current-logo" style="margin-top: 10px;">
+                        <!-- Logo preview will be shown here -->
+                    </div>
+                    <span class="help-text">Format accepté: PNG, JPG, GIF (max 2MB)</span>
                 </div>
 
                 <div class="form-group">
@@ -996,6 +1006,14 @@
                 document.getElementById('company-name').value = company.name;
                 document.getElementById('company-description').value = company.description || '';
 
+                // Show existing logo
+                const logoPreview = document.getElementById('current-logo');
+                if (company.logo) {
+                    logoPreview.innerHTML = `<img src="/static/logos/${company.logo}" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">`;
+                } else {
+                    logoPreview.innerHTML = '<span style="color: #999;">Aucun logo</span>';
+                }
+
                 // Load existing networks
                 try {
                     currentNetworks = company.local_networks ? JSON.parse(company.local_networks) : [];
@@ -1077,31 +1095,33 @@
             event.preventDefault();
 
             const companyId = document.getElementById('company-id').value;
-            const name = document.getElementById('company-name').value;
-            const description = document.getElementById('company-description').value;
+            const logoFile = document.getElementById('company-logo').files[0];
 
-            const companyData = {
-                name,
-                description,
-                local_networks: JSON.stringify(currentNetworks),
-                ldap_enabled: document.getElementById('company-ldap-enabled').checked ? 1 : 0,
-                ldap_server: document.getElementById('company-ldap-server').value,
-                ldap_port: parseInt(document.getElementById('company-ldap-port').value) || 389,
-                ldap_use_ssl: document.getElementById('company-ldap-ssl').checked ? 1 : 0,
-                ldap_base_dn: document.getElementById('company-ldap-base-dn').value,
-                ldap_user_dn_template: document.getElementById('company-ldap-user-dn').value,
-                ldap_bind_dn: document.getElementById('company-ldap-bind-dn').value,
-                ldap_bind_password: document.getElementById('company-ldap-bind-password').value,
-                ldap_admin_group: document.getElementById('company-ldap-admin-group').value
-            };
+            // Use FormData to handle file upload
+            const formData = new FormData();
+            formData.append('name', document.getElementById('company-name').value);
+            formData.append('description', document.getElementById('company-description').value);
+            formData.append('local_networks', JSON.stringify(currentNetworks));
+            formData.append('ldap_enabled', document.getElementById('company-ldap-enabled').checked ? 1 : 0);
+            formData.append('ldap_server', document.getElementById('company-ldap-server').value);
+            formData.append('ldap_port', parseInt(document.getElementById('company-ldap-port').value) || 389);
+            formData.append('ldap_use_ssl', document.getElementById('company-ldap-ssl').checked ? 1 : 0);
+            formData.append('ldap_base_dn', document.getElementById('company-ldap-base-dn').value);
+            formData.append('ldap_user_dn_template', document.getElementById('company-ldap-user-dn').value);
+            formData.append('ldap_bind_dn', document.getElementById('company-ldap-bind-dn').value);
+            formData.append('ldap_bind_password', document.getElementById('company-ldap-bind-password').value);
+            formData.append('ldap_admin_group', document.getElementById('company-ldap-admin-group').value);
+
+            if (logoFile) {
+                formData.append('logo', logoFile);
+            }
 
             const url = companyId ? `/api/admin/companies/${companyId}` : '/api/admin/companies';
             const method = companyId ? 'PUT' : 'POST';
 
             fetch(url, {
                 method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(companyData)
+                body: formData  // Don't set Content-Type header, let browser set it with boundary
             })
             .then(response => response.json())
             .then(data => {

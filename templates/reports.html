@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Rapports - VPN Logger</title>
+    <!-- Force reload: 2025-10-07-16:06 -->
+    <script src="{{ url_for('static', filename='js/theme-init.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .report-type-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .report-type-btn {
+            flex: 1;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .report-type-btn:hover {
+            border-color: var(--color-primary);
+            transform: translateY(-2px);
+        }
+
+        .report-type-btn.active {
+            border-color: var(--color-primary);
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .report-type-btn h3 {
+            margin-bottom: 10px;
+        }
+
+        .filters-section {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .daily-table {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .daily-table th {
+            background: var(--color-primary);
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .daily-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .daily-table tr:hover {
+            background: var(--bg-gray-light);
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: var(--bg-gray-light);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .summary-card .label {
+            font-size: 14px;
+            color: var(--text-gray);
+            margin-bottom: 10px;
+        }
+
+        .summary-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+
+        .user-section {
+            margin-bottom: 30px;
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .user-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .user-section-header h3 {
+            margin: 0;
+            color: var(--color-primary);
+        }
+
+        .user-totals {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .user-totals span {
+            padding: 5px 10px;
+            background: var(--bg-gray);
+            border-radius: 5px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-gray);
+        }
+
+        #user-list {
+            width: 100%;
+        }
+
+        #user-list option {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .day-weekend {
+            background: var(--bg-gray-light) !important;
+        }
+
+        .day-no-connection {
+            opacity: 0.5;
+        }
+
+        .timeline-day {
+            margin-bottom: 30px;
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .timeline-day-header {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .timeline-day-header h4 {
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .timeline-24h {
+            position: relative;
+            height: 60px;
+            background: var(--bg-gray-light);
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+
+        .timeline-hours {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-gray);
+            margin-top: 5px;
+            padding: 0 5px;
+        }
+
+        .timeline-session {
+            position: absolute;
+            height: 100%;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 5px;
+        }
+
+        .timeline-session.local {
+            background: #10b981;
+        }
+
+        .timeline-session.remote {
+            background: #f59e0b;
+        }
+
+        .timeline-session:hover {
+            transform: scaleY(1.1);
+            z-index: 10;
+            filter: brightness(0.9);
+        }
+
+        .timeline-session.active {
+            background: #3b82f6;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>📊 Rapports VPN</h1>
+                <p style="color: var(--text-gray); margin-top: 5px;">Statistiques détaillées par utilisateur et société</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="user-info">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="role-badge">{{ user.role }}</span>
+                </div>
+                <div class="nav-links">
+                    <a href="/">📋 Logs</a>
+                    <a href="/calendar">📅 Calendrier</a>
+                    <a href="/statistics">📊 Statistiques</a>
+                    <a href="/reports" style="background: var(--color-primary-hover);">📈 Rapports</a>
+                    {% if user.role in ['super_admin', 'admin'] %}
+                    <a href="/admin">⚙️ Admin</a>
+                    {% endif %}
+                    <a href="/logout" class="btn-logout">🚪 Déconnexion</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sélecteur de type de rapport -->
+        <div class="report-type-selector">
+            <div class="report-type-btn active" id="btn-user-report" onclick="selectReportType('user')">
+                <h3>👤 Rapport Utilisateur</h3>
+                <p>Statistiques détaillées pour un utilisateur spécifique</p>
+            </div>
+            <div class="report-type-btn" id="btn-company-report" onclick="selectReportType('company')">
+                <h3>🏢 Rapport Société</h3>
+                <p>Tous les utilisateurs d'une société</p>
+            </div>
+        </div>
+
+        <!-- Filtres -->
+        <div class="filters-section">
+            <h2 style="margin-bottom: 20px;">🔍 Filtres</h2>
+
+            <div id="user-filters">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label>Utilisateur *</label>
+                        <select id="user-list">
+                            <option value="">Sélectionner un utilisateur</option>
+                        </select>
+                    </div>
+
+                    {% if user.role == 'super_admin' or user.companies|length > 1 %}
+                    <div class="form-group">
+                        <label>Société (optionnel)</label>
+                        <select id="user-company-filter">
+                            <option value="">Toutes mes sociétés</option>
+                            {% for company in user.companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label>Type de période</label>
+                        <select id="user-period-type" onchange="updateUserPeriodFilters()">
+                            <option value="week" selected>Semaine (Lun-Dim)</option>
+                            <option value="month">Mois complet</option>
+                            <option value="quarter">Trimestre</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Année</label>
+                        <select id="user-year">
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="form-group" id="user-week-selector">
+                        <label>Semaine</label>
+                        <select id="user-week">
+                            <!-- Généré par JS -->
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="user-month-selector" style="display: none;">
+                        <label>Mois</label>
+                        <select id="user-month">
+                            <option value="1">Janvier</option>
+                            <option value="2">Février</option>
+                            <option value="3">Mars</option>
+                            <option value="4">Avril</option>
+                            <option value="5">Mai</option>
+                            <option value="6">Juin</option>
+                            <option value="7">Juillet</option>
+                            <option value="8">Août</option>
+                            <option value="9">Septembre</option>
+                            <option value="10">Octobre</option>
+                            <option value="11">Novembre</option>
+                            <option value="12">Décembre</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="user-quarter-selector" style="display: none;">
+                        <label>Trimestre</label>
+                        <select id="user-quarter">
+                            <option value="1">Q1 - Janvier à Mars</option>
+                            <option value="2">Q2 - Avril à Juin</option>
+                            <option value="3">Q3 - Juillet à Septembre</option>
+                            <option value="4">Q4 - Octobre à Décembre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="loadUserReport()">📊 Générer le rapport</button>
+                    <button class="btn btn-success" onclick="exportUserReportPDF()">📄 Exporter PDF</button>
+                </div>
+            </div>
+
+            <div id="company-filters" style="display: none;">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label>Société *</label>
+                        <select id="company-select">
+                            <option value="">Sélectionner une société</option>
+                            {% for company in user.companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type de période</label>
+                        <select id="company-period-type" onchange="updateCompanyPeriodFilters()">
+                            <option value="week" selected>Semaine (Lun-Dim)</option>
+                            <option value="month">Mois complet</option>
+                            <option value="quarter">Trimestre</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Année</label>
+                        <select id="company-year">
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="form-group" id="company-week-selector">
+                        <label>Semaine</label>
+                        <select id="company-week">
+                            <!-- Généré par JS -->
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="company-month-selector" style="display: none;">
+                        <label>Mois</label>
+                        <select id="company-month">
+                            <option value="1">Janvier</option>
+                            <option value="2">Février</option>
+                            <option value="3">Mars</option>
+                            <option value="4">Avril</option>
+                            <option value="5">Mai</option>
+                            <option value="6">Juin</option>
+                            <option value="7">Juillet</option>
+                            <option value="8">Août</option>
+                            <option value="9">Septembre</option>
+                            <option value="10">Octobre</option>
+                            <option value="11">Novembre</option>
+                            <option value="12">Décembre</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="company-quarter-selector" style="display: none;">
+                        <label>Trimestre</label>
+                        <select id="company-quarter">
+                            <option value="1">Q1 - Janvier à Mars</option>
+                            <option value="2">Q2 - Avril à Juin</option>
+                            <option value="3">Q3 - Juillet à Septembre</option>
+                            <option value="4">Q4 - Octobre à Décembre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="loadCompanyReport()">📊 Générer le rapport</button>
+                    <button class="btn btn-success" onclick="exportCompanyReportPDF()">📄 Exporter PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Résultats -->
+        <div id="results-section" style="display: none;">
+            <!-- User report results -->
+            <div id="user-results" style="display: none;">
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="label">Connexions Remote</div>
+                        <div class="value" id="user-total-connections">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label">Temps Remote (heures)</div>
+                        <div class="value" id="user-total-hours">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label">Connexions Local</div>
+                        <div class="value" id="user-local-connections">-</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label">Temps Local (heures)</div>
+                        <div class="value" id="user-local-hours">-</div>
+                    </div>
+                </div>
+
+                <!-- Graphique -->
+                <div style="background: var(--bg-card); padding: 25px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 30px;">
+                    <h3 style="margin-bottom: 20px; color: var(--text-primary);">📊 Vue graphique par jour</h3>
+                    <div id="user-timeline-container">
+                        <!-- Timelines générées dynamiquement -->
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 20px; border-radius: 10px; box-shadow: var(--shadow);">
+                    <h3 style="margin-bottom: 20px;">📅 Détail par jour</h3>
+                    <table class="daily-table" id="user-daily-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Jour</th>
+                                <th>Connexions Remote</th>
+                                <th>Durée Remote</th>
+                                <th>Connexions Local</th>
+                                <th>Durée Local</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-daily-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Company report results -->
+            <div id="company-results" style="display: none;">
+                <div id="company-users-list">
+                    <!-- Généré par JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 12px; border-top: 1px solid var(--border-color); margin-top: 40px; background: var(--bg-card); border-radius: 10px; box-shadow: var(--shadow);">
+            VPN Logger v{{ app_version }} - Système de monitoring VPN UniFi
+        </div>
+    </div>
+
+    <script>
+        let currentReportType = 'user';
+
+        // Changer de type de rapport
+        function selectReportType(type) {
+            currentReportType = type;
+
+            // UI
+            document.getElementById('btn-user-report').classList.toggle('active', type === 'user');
+            document.getElementById('btn-company-report').classList.toggle('active', type === 'company');
+            document.getElementById('user-filters').style.display = type === 'user' ? 'block' : 'none';
+            document.getElementById('company-filters').style.display = type === 'company' ? 'block' : 'none';
+
+            // Cacher les résultats
+            document.getElementById('results-section').style.display = 'none';
+        }
+
+        // Générer les semaines de l'année
+        function populateWeeks(selectId) {
+            const select = document.getElementById(selectId);
+            const now = new Date();
+            const currentWeek = getWeekNumber(now);
+
+            select.innerHTML = '';
+            for (let i = 1; i <= 53; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `Semaine ${i}`;
+                if (i === currentWeek) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+        }
+
+        // Calculer le numéro de semaine ISO 8601 (France)
+        // La semaine 1 est la première semaine avec au moins 4 jours dans la nouvelle année
+        function getWeekNumber(date) {
+            // Copier la date pour ne pas modifier l'original
+            const d = new Date(date.getTime());
+
+            // Définir au jeudi de la semaine courante (ISO)
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+
+            // Premier jour de l'année
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+
+            // Calculer le numéro de semaine
+            const weekNumber = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+
+            return weekNumber;
+        }
+
+        // Mettre à jour les filtres de période utilisateur
+        function updateUserPeriodFilters() {
+            const periodType = document.getElementById('user-period-type').value;
+
+            document.getElementById('user-week-selector').style.display = periodType === 'week' ? 'block' : 'none';
+            document.getElementById('user-month-selector').style.display = periodType === 'month' ? 'block' : 'none';
+            document.getElementById('user-quarter-selector').style.display = periodType === 'quarter' ? 'block' : 'none';
+        }
+
+        // Mettre à jour les filtres de période société
+        function updateCompanyPeriodFilters() {
+            const periodType = document.getElementById('company-period-type').value;
+
+            document.getElementById('company-week-selector').style.display = periodType === 'week' ? 'block' : 'none';
+            document.getElementById('company-month-selector').style.display = periodType === 'month' ? 'block' : 'none';
+            document.getElementById('company-quarter-selector').style.display = periodType === 'quarter' ? 'block' : 'none';
+        }
+
+        // Définir le mois et trimestre courants
+        function setCurrentPeriods() {
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentQuarter = Math.floor((currentMonth - 1) / 3) + 1;
+
+            document.getElementById('user-month').value = currentMonth;
+            document.getElementById('user-quarter').value = currentQuarter;
+            document.getElementById('company-month').value = currentMonth;
+            document.getElementById('company-quarter').value = currentQuarter;
+        }
+
+        // Charger la liste des utilisateurs
+        function loadUsersList() {
+            fetch('/api/events?limit=1000')
+                .then(response => response.json())
+                .then(data => {
+                    const users = [...new Set(data.map(e => e.user))].sort();
+                    const select = document.getElementById('user-list');
+
+                    // Garder l'option "Sélectionner"
+                    select.innerHTML = '<option value="">Sélectionner un utilisateur</option>';
+
+                    users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        option.textContent = user;
+                        select.appendChild(option);
+                    });
+                });
+        }
+
+        // Format duration
+        function formatDuration(seconds) {
+            if (!seconds || seconds === 0) return '0h 0m';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+            return days[date.getDay()];
+        }
+
+        // Charger rapport utilisateur
+        async function loadUserReport() {
+            const username = document.getElementById('user-list').value.trim();
+            if (!username) {
+                alert('Veuillez sélectionner un utilisateur');
+                return;
+            }
+
+            const periodType = document.getElementById('user-period-type').value;
+            const year = document.getElementById('user-year').value;
+            const companyFilter = document.getElementById('user-company-filter');
+            const companyId = companyFilter ? companyFilter.value : '';
+
+            let url = `/api/reports/user?username=${encodeURIComponent(username)}&period_type=${periodType}&year=${year}`;
+
+            if (periodType === 'week') {
+                const week = document.getElementById('user-week').value;
+                url += `&week=${week}`;
+            } else if (periodType === 'month') {
+                const month = document.getElementById('user-month').value;
+                url += `&month=${month}`;
+            } else if (periodType === 'quarter') {
+                const quarter = document.getElementById('user-quarter').value;
+                url += `&quarter=${quarter}`;
+            }
+
+            if (companyId) {
+                url += `&company_id=${companyId}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayUserReport(data);
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('Erreur lors du chargement du rapport');
+            }
+        }
+
+        // Afficher rapport utilisateur
+        function displayUserReport(data) {
+            // Afficher la section résultats
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('user-results').style.display = 'block';
+            document.getElementById('company-results').style.display = 'none';
+
+            // Totaux
+            document.getElementById('user-total-connections').textContent = data.totals.remote_connections;
+            document.getElementById('user-total-hours').textContent = data.totals.remote_hours;
+            document.getElementById('user-local-connections').textContent = data.totals.local_connections;
+            document.getElementById('user-local-hours').textContent = data.totals.local_hours;
+
+            // Créer le graphique
+            createUserChart(data);
+
+            // Tableau quotidien
+            const tbody = document.getElementById('user-daily-tbody');
+            tbody.innerHTML = '';
+
+            data.daily.forEach(day => {
+                // Masquer les jours sans aucune connexion
+                if (day.remote_connections === 0 && day.local_connections === 0) {
+                    return;
+                }
+
+                const tr = document.createElement('tr');
+                const dayName = formatDate(day.date);
+                const isWeekend = dayName === 'Sam' || dayName === 'Dim';
+
+                if (isWeekend) {
+                    tr.classList.add('day-weekend');
+                }
+
+                if (day.remote_connections === 0) {
+                    tr.classList.add('day-no-connection');
+                }
+
+                tr.innerHTML = `
+                    <td>${day.date}</td>
+                    <td>${dayName}</td>
+                    <td>${day.remote_connections}</td>
+                    <td>${formatDuration(day.remote_duration)}</td>
+                    <td>${day.local_connections}</td>
+                    <td>${formatDuration(day.local_duration)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Scroller vers les résultats
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Créer timelines 24h par jour
+        function createUserChart(data) {
+            const container = document.getElementById('user-timeline-container');
+            container.innerHTML = '';
+
+            const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+            const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+            console.log('[DEBUG] createUserChart - data.daily:', data.daily);
+
+            data.daily.forEach(day => {
+                console.log('[DEBUG] Processing day:', day.date, 'sessions:', day.sessions);
+                if (!day.sessions || day.sessions.length === 0) {
+                    return; // Ne pas afficher les jours sans sessions
+                }
+
+                const date = new Date(day.date);
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'timeline-day';
+
+                const totalDuration = day.remote_duration + day.local_duration;
+                const hours = Math.floor(totalDuration / 3600);
+                const minutes = Math.floor((totalDuration % 3600) / 60);
+
+                dayDiv.innerHTML = `
+                    <div class="timeline-day-header">
+                        <h4>${dayNames[date.getDay()]} ${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()} - Total: ${hours}h ${minutes}m</h4>
+                    </div>
+                    <div class="timeline-24h" id="timeline-${day.date}"></div>
+                    <div class="timeline-hours">
+                        <span>00:00</span>
+                        <span>04:00</span>
+                        <span>08:00</span>
+                        <span>12:00</span>
+                        <span>16:00</span>
+                        <span>20:00</span>
+                        <span>24:00</span>
+                    </div>
+                `;
+
+                container.appendChild(dayDiv);
+
+                // Ajouter les sessions
+                const timelineBar = dayDiv.querySelector('.timeline-24h');
+                day.sessions.forEach(session => {
+                    const startTime = new Date(session.start);
+                    const startHour = startTime.getHours() + startTime.getMinutes() / 60;
+                    const startPercent = (startHour / 24) * 100;
+
+                    let widthPercent;
+                    let isActive = false;
+
+                    if (session.end) {
+                        const endTime = new Date(session.end);
+                        const endHour = endTime.getHours() + endTime.getMinutes() / 60;
+                        widthPercent = ((endHour - startHour) / 24) * 100;
+                    } else {
+                        // Session active
+                        const now = new Date();
+                        const nowHour = now.getHours() + now.getMinutes() / 60;
+                        widthPercent = ((nowHour - startHour) / 24) * 100;
+                        isActive = true;
+                    }
+
+                    const sessionDiv = document.createElement('div');
+                    let classes = 'timeline-session';
+                    if (isActive) {
+                        classes += ' active';
+                    } else {
+                        classes += session.is_local ? ' local' : ' remote';
+                    }
+                    sessionDiv.className = classes;
+                    sessionDiv.style.left = startPercent + '%';
+                    sessionDiv.style.width = widthPercent + '%';
+
+                    if (session.duration) {
+                        const h = Math.floor(session.duration / 3600);
+                        const m = Math.floor((session.duration % 3600) / 60);
+                        sessionDiv.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    } else {
+                        sessionDiv.textContent = 'En cours';
+                    }
+
+                    const locationText = session.is_local ? '🏠 Local' : '🌍 Remote';
+                    sessionDiv.title = `${locationText} - ${session.vpn_type} - ${session.ip}\n` +
+                        `Début: ${startTime.toLocaleTimeString('fr-FR')}\n` +
+                        (session.end ? `Fin: ${new Date(session.end).toLocaleTimeString('fr-FR')}` : 'En cours');
+
+                    timelineBar.appendChild(sessionDiv);
+                });
+            });
+        }
+
+        // Charger rapport société
+        async function loadCompanyReport() {
+            const companyId = document.getElementById('company-select').value;
+            if (!companyId) {
+                alert('Veuillez sélectionner une société');
+                return;
+            }
+
+            const periodType = document.getElementById('company-period-type').value;
+            const year = document.getElementById('company-year').value;
+
+            let url = `/api/reports/company?company_id=${companyId}&period_type=${periodType}&year=${year}`;
+
+            if (periodType === 'week') {
+                const week = document.getElementById('company-week').value;
+                url += `&week=${week}`;
+            } else if (periodType === 'month') {
+                const month = document.getElementById('company-month').value;
+                url += `&month=${month}`;
+            } else if (periodType === 'quarter') {
+                const quarter = document.getElementById('company-quarter').value;
+                url += `&quarter=${quarter}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayCompanyReport(data);
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('Erreur lors du chargement du rapport');
+            }
+        }
+
+        // Afficher rapport société
+        function displayCompanyReport(data) {
+            console.log('[DEBUG] displayCompanyReport - data:', data);
+
+            // Afficher la section résultats
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('user-results').style.display = 'none';
+            document.getElementById('company-results').style.display = 'block';
+
+            const container = document.getElementById('company-users-list');
+            container.innerHTML = '';
+
+            if (data.users.length === 0) {
+                container.innerHTML = '<div class="no-data">Aucune donnée pour cette période</div>';
+                return;
+            }
+
+            data.users.forEach((userData, index) => {
+                console.log('[DEBUG] Processing user:', userData.username, userData);
+
+                const userSection = document.createElement('div');
+                userSection.className = 'user-section';
+
+                const header = document.createElement('div');
+                header.className = 'user-section-header';
+                header.innerHTML = `
+                    <h3>👤 ${userData.username}</h3>
+                    <div class="user-totals">
+                        <span>📊 ${userData.totals.connections} connexions</span>
+                        <span>⏱️ ${userData.totals.hours}h remote</span>
+                    </div>
+                `;
+                userSection.appendChild(header);
+
+                // Ajouter le graphique timeline
+                const chartDiv = document.createElement('div');
+                chartDiv.style.marginTop = '20px';
+                chartDiv.style.background = 'var(--bg-gray-light)';
+                chartDiv.style.padding = '20px';
+                chartDiv.style.borderRadius = '10px';
+                chartDiv.innerHTML = `
+                    <h4 style="margin-bottom: 15px; color: var(--text-primary);">📊 Vue graphique par jour</h4>
+                    <div id="company-timeline-${index}"></div>
+                `;
+                userSection.appendChild(chartDiv);
+
+                const table = document.createElement('table');
+                table.className = 'daily-table';
+                table.style.marginTop = '20px';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Jour</th>
+                            <th>Connexions Remote</th>
+                            <th>Durée Remote</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                `;
+
+                const tbody = table.querySelector('tbody');
+                userData.daily.forEach(day => {
+                    // Masquer les jours sans aucune connexion
+                    if (day.remote_connections === 0) {
+                        return;
+                    }
+
+                    const tr = document.createElement('tr');
+                    const dayName = formatDate(day.date);
+                    const isWeekend = dayName === 'Sam' || dayName === 'Dim';
+
+                    if (isWeekend) {
+                        tr.classList.add('day-weekend');
+                    }
+
+                    tr.innerHTML = `
+                        <td>${day.date}</td>
+                        <td>${dayName}</td>
+                        <td>${day.remote_connections}</td>
+                        <td>${formatDuration(day.remote_duration)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                userSection.appendChild(table);
+                container.appendChild(userSection);
+
+                // Créer le graphique pour cet utilisateur
+                createCompanyUserChart(userData, index);
+            });
+
+            // Scroller vers les résultats
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Créer timeline pour un utilisateur dans le rapport société
+        function createCompanyUserChart(userData, index) {
+            const container = document.getElementById(`company-timeline-${index}`);
+            container.innerHTML = '';
+
+            const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+            const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+            userData.daily.forEach(day => {
+                if (!day.sessions || day.sessions.length === 0) {
+                    return; // Ne pas afficher les jours sans sessions
+                }
+
+                const date = new Date(day.date);
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'timeline-day';
+
+                const hours = Math.floor(day.remote_duration / 3600);
+                const minutes = Math.floor((day.remote_duration % 3600) / 60);
+
+                dayDiv.innerHTML = `
+                    <div class="timeline-day-header">
+                        <h4>${dayNames[date.getDay()]} ${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()} - Remote: ${hours}h ${minutes}m</h4>
+                    </div>
+                    <div class="timeline-24h" id="company-timeline-${index}-${day.date}"></div>
+                    <div class="timeline-hours">
+                        <span>00:00</span>
+                        <span>04:00</span>
+                        <span>08:00</span>
+                        <span>12:00</span>
+                        <span>16:00</span>
+                        <span>20:00</span>
+                        <span>24:00</span>
+                    </div>
+                `;
+
+                container.appendChild(dayDiv);
+
+                // Ajouter les sessions
+                const timelineBar = dayDiv.querySelector('.timeline-24h');
+                day.sessions.forEach(session => {
+                    const startTime = new Date(session.start);
+                    const startHour = startTime.getHours() + startTime.getMinutes() / 60;
+                    const startPercent = (startHour / 24) * 100;
+
+                    let widthPercent;
+                    let isActive = false;
+
+                    if (session.end) {
+                        const endTime = new Date(session.end);
+                        const endHour = endTime.getHours() + endTime.getMinutes() / 60;
+                        widthPercent = ((endHour - startHour) / 24) * 100;
+                    } else {
+                        // Session active
+                        const now = new Date();
+                        const nowHour = now.getHours() + now.getMinutes() / 60;
+                        widthPercent = ((nowHour - startHour) / 24) * 100;
+                        isActive = true;
+                    }
+
+                    const sessionDiv = document.createElement('div');
+                    let classes = 'timeline-session';
+                    if (isActive) {
+                        classes += ' active';
+                    } else {
+                        classes += session.is_local ? ' local' : ' remote';
+                    }
+                    sessionDiv.className = classes;
+                    sessionDiv.style.left = startPercent + '%';
+                    sessionDiv.style.width = widthPercent + '%';
+
+                    if (session.duration) {
+                        const h = Math.floor(session.duration / 3600);
+                        const m = Math.floor((session.duration % 3600) / 60);
+                        sessionDiv.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    } else {
+                        sessionDiv.textContent = 'En cours';
+                    }
+
+                    const locationText = session.is_local ? '🏠 Local' : '🌍 Remote';
+                    sessionDiv.title = `${locationText} - ${session.vpn_type} - ${session.ip}\n` +
+                        `Début: ${startTime.toLocaleTimeString('fr-FR')}\n` +
+                        (session.end ? `Fin: ${new Date(session.end).toLocaleTimeString('fr-FR')}` : 'En cours');
+
+                    timelineBar.appendChild(sessionDiv);
+                });
+            });
+        }
+
+        // Fonctions d'export PDF
+        function exportUserReportPDF() {
+            const username = document.getElementById('user-list').value;
+            if (!username) {
+                alert('Veuillez sélectionner un utilisateur');
+                return;
+            }
+
+            const periodType = document.getElementById('user-period-type').value;
+            const year = document.getElementById('user-year').value;
+
+            let params = `username=${encodeURIComponent(username)}&period_type=${periodType}&year=${year}`;
+
+            if (periodType === 'week') {
+                const week = document.getElementById('user-week').value;
+                params += `&week=${week}`;
+            } else if (periodType === 'month') {
+                const month = document.getElementById('user-month').value;
+                params += `&month=${month}`;
+            } else if (periodType === 'quarter') {
+                const quarter = document.getElementById('user-quarter').value;
+                params += `&quarter=${quarter}`;
+            }
+
+            // Ouvrir le PDF dans un nouvel onglet
+            window.open(`/api/reports/user/pdf?${params}`, '_blank');
+        }
+
+        function exportCompanyReportPDF() {
+            const companyId = document.getElementById('company-select').value;
+            if (!companyId) {
+                alert('Veuillez sélectionner une société');
+                return;
+            }
+
+            const periodType = document.getElementById('company-period-type').value;
+            const year = document.getElementById('company-year').value;
+
+            let params = `company_id=${companyId}&period_type=${periodType}&year=${year}`;
+
+            if (periodType === 'week') {
+                const week = document.getElementById('company-week').value;
+                params += `&week=${week}`;
+            } else if (periodType === 'month') {
+                const month = document.getElementById('company-month').value;
+                params += `&month=${month}`;
+            } else if (periodType === 'quarter') {
+                const quarter = document.getElementById('company-quarter').value;
+                params += `&quarter=${quarter}`;
+            }
+
+            // Ouvrir le PDF dans un nouvel onglet
+            window.open(`/api/reports/company/pdf?${params}`, '_blank');
+        }
+
+        // Initialisation
+        populateWeeks('user-week');
+        populateWeeks('company-week');
+        setCurrentPeriods();
+        loadUsersList();
+    </script>
+    <script src="{{ url_for('static', filename='js/darkmode.js') }}"></script>
+    <!-- Cache bust: {{ cache_bust }} -->
+</body>
+</html>

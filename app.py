@@ -4,13 +4,20 @@ Site Web de Logs VPN UniFi
 Reçoit les webhooks UniFi pour les connexions/déconnexions VPN
 """
 
-from flask import Flask, request, render_template, jsonify, redirect, url_for, session, flash
+from flask import Flask, request, render_template, jsonify, redirect, url_for, session, flash, send_from_directory, make_response
 from datetime import datetime
+from werkzeug.utils import secure_filename
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 import json
 import sqlite3
 import os
 import ipaddress
 import secrets
+import logging
+import sys
+import uuid
+import io
 
 # Import auth module
 from auth import (
@@ -21,11 +28,22 @@ from auth import (
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)  # Clé secrète pour les sessions
 
+# Configure logging
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+app.logger.setLevel(logging.INFO)
+
 # Configuration
 APP_VERSION = '2.2.1'
 DB_PATH = '/var/www/html/vpn-logger/vpn_logs.db'
 LOG_FILE = '/var/www/html/vpn-logger/vpn_events.log'
 CONFIG_FILE = '/var/www/html/vpn-logger/config.json'
+LOGOS_FOLDER = '/var/www/html/vpn-logger/static/logos'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
 
 # Rendre la version disponible dans tous les templates
 @app.context_processor
@@ -43,6 +61,26 @@ def load_config():
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
+
+def allowed_file(filename):
+    """Vérifie si l'extension du fichier est autorisée"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_logo(file):
+    """Sauvegarde un logo et retourne le nom du fichier"""
+    if file and allowed_file(file.filename):
+        # Générer un nom de fichier unique
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{ext}"
+        filepath = os.path.join(LOGOS_FOLDER, filename)
+
+        # Créer le dossier s'il n'existe pas
+        os.makedirs(LOGOS_FOLDER, exist_ok=True)
+
+        # Sauvegarder le fichier
+        file.save(filepath)
+        return filename
+    return None
 
 def is_local_ip(ip_str, company_id=None):
     """Vérifie si une IP est dans un réseau local configuré pour une société"""
@@ -907,7 +945,7 @@ def admin_get_companies():
 
     c.execute('''SELECT id, name, description, created_at, local_networks,
                         ldap_enabled, ldap_server, ldap_port, ldap_use_ssl, ldap_base_dn,
-                        ldap_user_dn_template, ldap_bind_dn, ldap_bind_password, ldap_admin_group
+                        ldap_user_dn_template, ldap_bind_dn, ldap_bind_password, ldap_admin_group, logo
                  FROM companies ORDER BY name''')
     companies = c.fetchall()
 
@@ -939,7 +977,8 @@ def admin_get_companies():
             'ldap_user_dn_template': company[10],
             'ldap_bind_dn': company[11],
             'ldap_bind_password': company[12],
-            'ldap_admin_group': company[13]
+            'ldap_admin_group': company[13],
+            'logo': company[14]
         })
 
     conn.close()
@@ -951,19 +990,26 @@ def admin_get_companies():
 def admin_create_company():
     """Créer une nouvelle société"""
     try:
-        data = request.get_json()
-        name = data.get('name')
-        description = data.get('description', '')
-        local_networks = data.get('local_networks', '[]')
-        ldap_enabled = data.get('ldap_enabled', 0)
-        ldap_server = data.get('ldap_server', '')
-        ldap_port = data.get('ldap_port', 389)
-        ldap_use_ssl = data.get('ldap_use_ssl', 0)
-        ldap_base_dn = data.get('ldap_base_dn', '')
-        ldap_user_dn_template = data.get('ldap_user_dn_template', '')
-        ldap_bind_dn = data.get('ldap_bind_dn', '')
-        ldap_bind_password = data.get('ldap_bind_password', '')
-        ldap_admin_group = data.get('ldap_admin_group', '')
+        # Récupérer les données du formulaire (FormData)
+        name = request.form.get('name')
+        description = request.form.get('description', '')
+        local_networks = request.form.get('local_networks', '[]')
+        ldap_enabled = int(request.form.get('ldap_enabled', 0))
+        ldap_server = request.form.get('ldap_server', '')
+        ldap_port = int(request.form.get('ldap_port', 389))
+        ldap_use_ssl = int(request.form.get('ldap_use_ssl', 0))
+        ldap_base_dn = request.form.get('ldap_base_dn', '')
+        ldap_user_dn_template = request.form.get('ldap_user_dn_template', '')
+        ldap_bind_dn = request.form.get('ldap_bind_dn', '')
+        ldap_bind_password = request.form.get('ldap_bind_password', '')
+        ldap_admin_group = request.form.get('ldap_admin_group', '')
+
+        # Gérer le logo
+        logo_filename = None
+        if 'logo' in request.files:
+            logo_file = request.files['logo']
+            if logo_file.filename:
+                logo_filename = save_logo(logo_file)
 
         if not name:
             return jsonify({'status': 'error', 'message': 'Le nom est requis'}), 400
@@ -981,12 +1027,12 @@ def admin_create_company():
         c.execute('''INSERT INTO companies (name, description, local_networks,
                                            ldap_enabled, ldap_server, ldap_port, ldap_use_ssl,
                                            ldap_base_dn, ldap_user_dn_template, ldap_bind_dn,
-                                           ldap_bind_password, ldap_admin_group)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                           ldap_bind_password, ldap_admin_group, logo)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                   (name, description, local_networks,
                    ldap_enabled, ldap_server, ldap_port, ldap_use_ssl,
                    ldap_base_dn, ldap_user_dn_template, ldap_bind_dn,
-                   ldap_bind_password, ldap_admin_group))
+                   ldap_bind_password, ldap_admin_group, logo_filename))
         company_id = c.lastrowid
 
         conn.commit()
@@ -1002,19 +1048,19 @@ def admin_create_company():
 def admin_update_company(company_id):
     """Modifier une société"""
     try:
-        data = request.get_json()
-        name = data.get('name')
-        description = data.get('description', '')
-        local_networks = data.get('local_networks', '[]')
-        ldap_enabled = data.get('ldap_enabled', 0)
-        ldap_server = data.get('ldap_server', '')
-        ldap_port = data.get('ldap_port', 389)
-        ldap_use_ssl = data.get('ldap_use_ssl', 0)
-        ldap_base_dn = data.get('ldap_base_dn', '')
-        ldap_user_dn_template = data.get('ldap_user_dn_template', '')
-        ldap_bind_dn = data.get('ldap_bind_dn', '')
-        ldap_bind_password = data.get('ldap_bind_password', '')
-        ldap_admin_group = data.get('ldap_admin_group', '')
+        # Récupérer les données du formulaire (FormData)
+        name = request.form.get('name')
+        description = request.form.get('description', '')
+        local_networks = request.form.get('local_networks', '[]')
+        ldap_enabled = int(request.form.get('ldap_enabled', 0))
+        ldap_server = request.form.get('ldap_server', '')
+        ldap_port = int(request.form.get('ldap_port', 389))
+        ldap_use_ssl = int(request.form.get('ldap_use_ssl', 0))
+        ldap_base_dn = request.form.get('ldap_base_dn', '')
+        ldap_user_dn_template = request.form.get('ldap_user_dn_template', '')
+        ldap_bind_dn = request.form.get('ldap_bind_dn', '')
+        ldap_bind_password = request.form.get('ldap_bind_password', '')
+        ldap_admin_group = request.form.get('ldap_admin_group', '')
 
         if not name:
             return jsonify({'status': 'error', 'message': 'Le nom est requis'}), 400
@@ -1022,22 +1068,39 @@ def admin_update_company(company_id):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
 
-        # Vérifier que la société existe
-        c.execute('SELECT id FROM companies WHERE id = ?', (company_id,))
-        if not c.fetchone():
+        # Vérifier que la société existe et récupérer le logo actuel
+        c.execute('SELECT id, logo FROM companies WHERE id = ?', (company_id,))
+        company = c.fetchone()
+        if not company:
             conn.close()
             return jsonify({'status': 'error', 'message': 'Société introuvable'}), 404
+
+        current_logo = company[1]
+
+        # Gérer le logo
+        logo_filename = current_logo  # Garder l'ancien logo par défaut
+        if 'logo' in request.files:
+            logo_file = request.files['logo']
+            if logo_file.filename:
+                new_logo = save_logo(logo_file)
+                if new_logo:
+                    logo_filename = new_logo
+                    # Supprimer l'ancien logo si existe
+                    if current_logo:
+                        old_logo_path = os.path.join(LOGOS_FOLDER, current_logo)
+                        if os.path.exists(old_logo_path):
+                            os.remove(old_logo_path)
 
         # Mettre à jour
         c.execute('''UPDATE companies SET name = ?, description = ?, local_networks = ?,
                                          ldap_enabled = ?, ldap_server = ?, ldap_port = ?, ldap_use_ssl = ?,
                                          ldap_base_dn = ?, ldap_user_dn_template = ?, ldap_bind_dn = ?,
-                                         ldap_bind_password = ?, ldap_admin_group = ?
+                                         ldap_bind_password = ?, ldap_admin_group = ?, logo = ?
                      WHERE id = ?''',
                   (name, description, local_networks,
                    ldap_enabled, ldap_server, ldap_port, ldap_use_ssl,
                    ldap_base_dn, ldap_user_dn_template, ldap_bind_dn,
-                   ldap_bind_password, ldap_admin_group, company_id))
+                   ldap_bind_password, ldap_admin_group, logo_filename, company_id))
 
         conn.commit()
         conn.close()
@@ -1235,6 +1298,17 @@ def statistics():
     return render_template('statistics.html',
                          username=user['username'],
                          role=user['role'])
+
+@app.route('/reports')
+@login_required
+def reports():
+    """Page des rapports détaillés"""
+    user = get_user_by_id(session['user_id'])
+    # Récupérer les sociétés complètes pour le sélecteur
+    user['companies'] = get_user_by_id(user['id'])['companies']
+    import time
+    cache_bust = int(time.time())
+    return render_template('reports.html', user=user, cache_bust=cache_bust)
 
 # API Statistiques
 @app.route('/api/statistics')
@@ -1493,6 +1567,853 @@ def api_statistics():
         })
 
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# API Rapports - Statistiques par utilisateur
+@app.route('/api/reports/user')
+@login_required
+def api_reports_user():
+    """Statistiques détaillées par utilisateur (connexions REMOTE uniquement)"""
+    try:
+        from datetime import datetime, timedelta
+        import calendar
+
+        # Paramètres
+        username = request.args.get('username')
+        period_type = request.args.get('period_type', 'week')  # week, month, quarter
+        year = request.args.get('year')
+        week_number = request.args.get('week')
+        month_number = request.args.get('month')
+        quarter_number = request.args.get('quarter')
+        company_id = request.args.get('company_id')
+
+        if not username:
+            return jsonify({'status': 'error', 'message': 'Username requis'}), 400
+
+        # Calculer les dates selon le type de période
+        now = datetime.now()
+        current_year = int(year) if year else now.year
+
+        if period_type == 'week':
+            # Semaine ISO 8601 (France) : lundi -> dimanche
+            # Semaine 1 = première semaine avec au moins 4 jours (ou contenant le 1er jeudi)
+            week = int(week_number) if week_number else now.isocalendar()[1]
+
+            # Utiliser isocalendar pour obtenir le bon lundi de la semaine ISO
+            # On cherche un jour de cette semaine, puis on trouve son lundi
+            jan_4 = datetime(current_year, 1, 4)  # Le 4 janvier est toujours dans la semaine 1
+            week_1_monday = jan_4 - timedelta(days=jan_4.weekday())  # Lundi de la semaine 1
+
+            # Calculer le lundi de la semaine demandée
+            start = week_1_monday + timedelta(weeks=week - 1)
+            end = start + timedelta(days=6)  # Dimanche
+
+        elif period_type == 'month':
+            # Mois complet : 1er -> dernier jour
+            month = int(month_number) if month_number else now.month
+            start = datetime(current_year, month, 1)
+            last_day = calendar.monthrange(current_year, month)[1]
+            end = datetime(current_year, month, last_day)
+
+        elif period_type == 'quarter':
+            # Trimestre : Q1 (jan-mar), Q2 (avr-jun), Q3 (jul-sep), Q4 (oct-dec)
+            quarter = int(quarter_number) if quarter_number else ((now.month - 1) // 3 + 1)
+            start_month = (quarter - 1) * 3 + 1
+            end_month = start_month + 2
+            start = datetime(current_year, start_month, 1)
+            last_day = calendar.monthrange(current_year, end_month)[1]
+            end = datetime(current_year, end_month, last_day)
+
+        else:
+            return jsonify({'status': 'error', 'message': 'Type de période invalide'}), 400
+
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Filtrage par permissions
+        user_companies = get_user_companies()
+        where_clauses = ["user = ?", "timestamp >= ?", "timestamp <= ?"]
+        params = [username, start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d 23:59:59')]
+
+        if user_companies:
+            placeholders = ','.join('?' * len(user_companies))
+            where_clauses.append(f"company_id IN ({placeholders})")
+            params.extend(user_companies)
+
+        if company_id:
+            where_clauses.append("company_id = ?")
+            params.append(company_id)
+
+        where_sql = ' AND '.join(where_clauses)
+
+        # Récupérer tous les événements avec IP et durée
+        c.execute(f'''
+            SELECT DATE(timestamp) as date, ip_address, company_id, duration, event_type
+            FROM vpn_events
+            WHERE {where_sql}
+            ORDER BY date
+        ''', params)
+
+        events = c.fetchall()
+
+        # Calculer les stats par jour (REMOTE uniquement)
+        daily_stats = {}
+        current_date = start.date()
+        end_date_obj = end.date()
+
+        # Initialiser tous les jours de la période avec 0
+        while current_date <= end_date_obj:
+            date_str = current_date.strftime('%Y-%m-%d')
+            daily_stats[date_str] = {
+                'date': date_str,
+                'remote_connections': 0,
+                'remote_duration': 0,
+                'local_connections': 0,
+                'local_duration': 0
+            }
+            current_date += timedelta(days=1)
+
+        # Remplir avec les données réelles
+        for row in events:
+            date, ip_address, comp_id, duration, event_type = row
+
+            if date not in daily_stats:
+                continue
+
+            # Vérifier si c'est remote ou local
+            if ip_address and not is_local_ip(ip_address, comp_id):
+                # Remote
+                if event_type == 'vpn_connect':
+                    daily_stats[date]['remote_connections'] += 1
+                if duration:
+                    daily_stats[date]['remote_duration'] += duration
+            else:
+                # Local
+                if event_type == 'vpn_connect':
+                    daily_stats[date]['local_connections'] += 1
+                if duration:
+                    daily_stats[date]['local_duration'] += duration
+
+        # Récupérer les sessions individuelles pour les timelines
+        c.execute(f'''
+            SELECT timestamp, ip_address, company_id, duration, event_type, vpn_type
+            FROM vpn_events
+            WHERE {where_sql}
+            ORDER BY timestamp
+        ''', params)
+
+        all_events = c.fetchall()
+
+        # Organiser les sessions par jour pour les timelines
+        sessions_by_day = {}
+        active_connections = {}  # Suivi des connexions actives
+
+        app.logger.info(f"[DEBUG] Processing {len(all_events)} events for sessions")
+
+        for row in all_events:
+            timestamp_str, ip_address, comp_id, duration, event_type, vpn_type = row
+
+            # Parser le timestamp (support ISO format et format standard)
+            try:
+                # Essayer ISO format avec T et microsecondes
+                event_time = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
+            except:
+                try:
+                    # Essayer ISO format avec T sans microsecondes
+                    event_time = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
+                except:
+                    try:
+                        # Essayer format standard avec espace
+                        event_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                    except:
+                        try:
+                            # Essayer format standard avec espace et microsecondes
+                            event_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
+                        except:
+                            app.logger.warning(f"[DEBUG] Could not parse timestamp: {timestamp_str}")
+                            continue
+
+            date_str = event_time.strftime('%Y-%m-%d')
+
+            if date_str not in sessions_by_day:
+                sessions_by_day[date_str] = []
+
+            # Déterminer si local ou remote
+            is_local = is_local_ip(ip_address, comp_id) if ip_address else True
+
+            app.logger.info(f"[DEBUG] Event: {event_type}, IP: {ip_address}, Date: {date_str}")
+
+            if event_type == 'vpn_connect':
+                # Début d'une session - la stocker comme active
+                active_connections[ip_address] = {
+                    'start': event_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': date_str,
+                    'is_local': is_local,
+                    'vpn_type': vpn_type if vpn_type else 'N/A'
+                }
+                app.logger.info(f"[DEBUG] Stored connect for {ip_address}")
+            elif event_type == 'vpn_disconnect':
+                app.logger.info(f"[DEBUG] Disconnect for {ip_address}, in active_connections: {ip_address in active_connections}")
+                if ip_address in active_connections:
+                    # Fin d'une session
+                    active_conn = active_connections[ip_address]
+                    sessions_by_day[active_conn['date']].append({
+                        'start': active_conn['start'],
+                        'end': event_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'duration': duration if duration else 0,
+                        'is_local': active_conn['is_local'],
+                        'ip': ip_address if ip_address else 'N/A',
+                        'vpn_type': active_conn['vpn_type']
+                    })
+                    app.logger.info(f"[DEBUG] Created session for {ip_address}")
+                    del active_connections[ip_address]
+
+        # Ajouter les connexions toujours actives
+        for ip, active_conn in active_connections.items():
+            sessions_by_day[active_conn['date']].append({
+                'start': active_conn['start'],
+                'end': None,  # Toujours connecté
+                'duration': 0,
+                'is_local': active_conn['is_local'],
+                'ip': ip if ip else 'N/A',
+                'vpn_type': active_conn['vpn_type']
+            })
+
+        app.logger.info(f"[DEBUG] Created sessions for {len(sessions_by_day)} days")
+        app.logger.info(f"[DEBUG] Sessions by day: {sessions_by_day}")
+
+        # Convertir en liste triée
+        daily_list = sorted(daily_stats.values(), key=lambda x: x['date'])
+
+        # Ajouter les sessions à chaque jour
+        for day in daily_list:
+            day['sessions'] = sessions_by_day.get(day['date'], [])
+
+        # Calculer les totaux
+        total_remote_connections = sum(d['remote_connections'] for d in daily_list)
+        total_remote_duration = sum(d['remote_duration'] for d in daily_list)
+        total_local_connections = sum(d['local_connections'] for d in daily_list)
+        total_local_duration = sum(d['local_duration'] for d in daily_list)
+
+        conn.close()
+
+        # Anonymiser si mode demo
+        display_username = anonymize_username(username) if is_demo_mode() else username
+
+        return jsonify({
+            'status': 'success',
+            'username': display_username,
+            'period': {
+                'start': start.strftime('%Y-%m-%d'),
+                'end': end.strftime('%Y-%m-%d')
+            },
+            'daily': daily_list,
+            'totals': {
+                'remote_connections': total_remote_connections,
+                'remote_duration': total_remote_duration,
+                'remote_hours': round(total_remote_duration / 3600, 2),
+                'local_connections': total_local_connections,
+                'local_duration': total_local_duration,
+                'local_hours': round(total_local_duration / 3600, 2)
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# API Rapports PDF - Rapport utilisateur
+@app.route('/api/reports/user/pdf')
+@login_required
+def api_reports_user_pdf():
+    """Génère un PDF du rapport utilisateur"""
+    try:
+        from datetime import datetime, timedelta
+        import calendar
+
+        # Récupérer les mêmes paramètres que la route JSON
+        username = request.args.get('username')
+        period_type = request.args.get('period_type', 'week')
+        year = request.args.get('year')
+        week_number = request.args.get('week')
+        month_number = request.args.get('month')
+        quarter_number = request.args.get('quarter')
+        company_id = request.args.get('company_id')
+
+        if not username:
+            return jsonify({'status': 'error', 'message': 'Username requis'}), 400
+
+        # Faire un appel HTTP interne à la route JSON pour récupérer les données
+        import requests
+        url = f'http://127.0.0.1/api/reports/user?username={username}&period_type={period_type}'
+        if year:
+            url += f'&year={year}'
+        if week_number:
+            url += f'&week={week_number}'
+        if month_number:
+            url += f'&month={month_number}'
+        if quarter_number:
+            url += f'&quarter={quarter_number}'
+        if company_id:
+            url += f'&company_id={company_id}'
+
+        # Copier les cookies de session
+        cookies = request.cookies
+        response = requests.get(url, cookies=cookies)
+
+        if response.status_code != 200:
+            return jsonify({'status': 'error', 'message': 'Erreur lors de la récupération des données'}), 500
+
+        data = response.json()
+
+        # Récupérer les informations de la société pour le logo
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Trouver la société de l'utilisateur (prendre la première)
+        c.execute('''SELECT c.id, c.name, c.logo
+                     FROM companies c
+                     WHERE c.id IN (SELECT company_id FROM user_companies uc
+                                   JOIN users u ON u.id = uc.user_id
+                                   WHERE u.username = ?)
+                     LIMIT 1''', (username,))
+        company = c.fetchone()
+
+        if not company:
+            # Fallback: prendre la première société
+            c.execute('SELECT id, name, logo FROM companies LIMIT 1')
+            company = c.fetchone()
+
+        conn.close()
+
+        company_name = company[1] if company else "VPN Logger"
+        company_logo_path = None
+        if company and company[2]:
+            # Utiliser file:// pour que WeasyPrint puisse charger l'image
+            company_logo_path = f"file://{os.path.join(LOGOS_FOLDER, company[2])}"
+
+        # Préparer le label de période
+        now = datetime.now()
+        current_year = int(year) if year else now.year
+
+        if period_type == 'week':
+            week = int(week_number) if week_number else now.isocalendar()[1]
+            period_label = f"Semaine {week}, {current_year}"
+        elif period_type == 'month':
+            month = int(month_number) if month_number else now.month
+            month_names = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+            period_label = f"{month_names[month-1]} {current_year}"
+        elif period_type == 'quarter':
+            quarter = int(quarter_number) if quarter_number else ((now.month - 1) // 3 + 1)
+            period_label = f"Trimestre {quarter}, {current_year}"
+
+        # Formater les données pour le template
+        def format_duration(seconds):
+            if not seconds:
+                return "0h 00m"
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            return f"{hours}h {minutes:02d}m"
+
+        summary = {
+            'remote_connections': data['totals']['remote_connections'],
+            'local_connections': data['totals']['local_connections'],
+            'total_duration': format_duration(data['totals']['remote_duration'] + data['totals']['local_duration']),
+            'avg_duration': format_duration((data['totals']['remote_duration'] + data['totals']['local_duration']) / max(data['totals']['remote_connections'] + data['totals']['local_connections'], 1))
+        }
+
+        # Filtrer les jours vides et formater les données
+        daily_data = []
+        for day in data['daily']:
+            if day['remote_connections'] == 0 and day['local_connections'] == 0:
+                continue
+
+            # Formater la date
+            date_obj = datetime.strptime(day['date'], '%Y-%m-%d')
+            day_formatted = {
+                'date': date_obj.strftime('%d/%m/%Y'),
+                'remote_connections': day['remote_connections'],
+                'local_connections': day['local_connections'],
+                'sessions': []
+            }
+
+            # Ajouter les sessions pour la timeline (si disponibles)
+            for session in day.get('sessions', []):
+                try:
+                    # Calculer les pourcentages pour la timeline 24h
+                    if session.get('start'):
+                        start_time = datetime.strptime(session['start'], '%Y-%m-%d %H:%M:%S')
+                        start_hour = start_time.hour + start_time.minute / 60 + start_time.second / 3600
+                        start_percent = (start_hour / 24) * 100
+
+                        # Calculer la durée en heures
+                        if session.get('end'):
+                            end_time = datetime.strptime(session['end'], '%Y-%m-%d %H:%M:%S')
+                            duration_seconds = (end_time - start_time).total_seconds()
+                        elif session.get('duration'):
+                            duration_seconds = session['duration']
+                        else:
+                            duration_seconds = 0
+
+                        duration_hours = duration_seconds / 3600
+                        duration_percent = (duration_hours / 24) * 100
+
+                        day_formatted['sessions'].append({
+                            'is_local': session.get('is_local', False),
+                            'start_percent': round(start_percent, 4),
+                            'duration_percent': round(duration_percent, 4)
+                        })
+                except (KeyError, TypeError, ValueError) as e:
+                    # Ignorer les sessions sans les données nécessaires
+                    app.logger.warning(f"Erreur calcul session timeline: {e}")
+                    pass
+
+            daily_data.append(day_formatted)
+
+        # Rendre le template HTML
+        html_content = render_template('pdf/user_report.html',
+            username=data['username'],
+            period_label=period_label,
+            generation_date=datetime.now().strftime('%d/%m/%Y %H:%M'),
+            summary=summary,
+            daily_data=daily_data,
+            company_name=company_name,
+            company_logo=company_logo_path,
+            app_version=APP_VERSION
+        )
+
+        # Générer le PDF
+        pdf_file = HTML(string=html_content, base_url=request.host_url).write_pdf()
+
+        # Créer la réponse
+        response = make_response(pdf_file)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="rapport_utilisateur_{username}_{period_type}_{current_year}.pdf"'
+
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Erreur génération PDF utilisateur: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# API Rapports - Statistiques par société
+@app.route('/api/reports/company')
+@login_required
+def api_reports_company():
+    """Statistiques détaillées par société (tous utilisateurs, REMOTE uniquement)"""
+    try:
+        from datetime import datetime, timedelta
+        import calendar
+
+        # Paramètres
+        company_id = request.args.get('company_id')
+        period_type = request.args.get('period_type', 'week')
+        year = request.args.get('year')
+        week_number = request.args.get('week')
+        month_number = request.args.get('month')
+        quarter_number = request.args.get('quarter')
+
+        if not company_id:
+            return jsonify({'status': 'error', 'message': 'Company ID requis'}), 400
+
+        # Vérifier les permissions
+        user_companies = get_user_companies()
+        if user_companies and int(company_id) not in user_companies:
+            return jsonify({'status': 'error', 'message': 'Accès refusé'}), 403
+
+        # Calculer les dates selon le type de période
+        now = datetime.now()
+        current_year = int(year) if year else now.year
+
+        if period_type == 'week':
+            # Semaine ISO 8601 (France)
+            week = int(week_number) if week_number else now.isocalendar()[1]
+            jan_4 = datetime(current_year, 1, 4)
+            week_1_monday = jan_4 - timedelta(days=jan_4.weekday())
+            start = week_1_monday + timedelta(weeks=week - 1)
+            end = start + timedelta(days=6)
+
+        elif period_type == 'month':
+            month = int(month_number) if month_number else now.month
+            start = datetime(current_year, month, 1)
+            last_day = calendar.monthrange(current_year, month)[1]
+            end = datetime(current_year, month, last_day)
+
+        elif period_type == 'quarter':
+            quarter = int(quarter_number) if quarter_number else ((now.month - 1) // 3 + 1)
+            start_month = (quarter - 1) * 3 + 1
+            end_month = start_month + 2
+            start = datetime(current_year, start_month, 1)
+            last_day = calendar.monthrange(current_year, end_month)[1]
+            end = datetime(current_year, end_month, last_day)
+
+        else:
+            return jsonify({'status': 'error', 'message': 'Type de période invalide'}), 400
+
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Récupérer tous les événements de la société
+        c.execute('''
+            SELECT DATE(timestamp) as date, user, ip_address, duration, event_type
+            FROM vpn_events
+            WHERE company_id = ? AND timestamp >= ? AND timestamp <= ?
+            ORDER BY date, user
+        ''', (company_id, start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d 23:59:59')))
+
+        events = c.fetchall()
+
+        # Stats par utilisateur et par jour
+        user_daily_stats = {}
+
+        # Initialiser la structure
+        current_date = start.date()
+        end_date_obj = end.date()
+
+        for row in events:
+            date, username, ip_address, duration, event_type = row
+
+            if username not in user_daily_stats:
+                user_daily_stats[username] = {}
+                # Initialiser tous les jours pour cet utilisateur
+                temp_date = start.date()
+                while temp_date <= end_date_obj:
+                    date_str = temp_date.strftime('%Y-%m-%d')
+                    user_daily_stats[username][date_str] = {
+                        'date': date_str,
+                        'remote_connections': 0,
+                        'remote_duration': 0
+                    }
+                    temp_date += timedelta(days=1)
+
+            if date not in user_daily_stats[username]:
+                continue
+
+            # Compter uniquement les REMOTE
+            if ip_address and not is_local_ip(ip_address, int(company_id)):
+                if event_type == 'vpn_connect':
+                    user_daily_stats[username][date]['remote_connections'] += 1
+                if duration:
+                    user_daily_stats[username][date]['remote_duration'] += duration
+
+        # Récupérer les sessions individuelles pour les timelines
+        c.execute('''
+            SELECT timestamp, user, ip_address, duration, event_type, vpn_type
+            FROM vpn_events
+            WHERE company_id = ? AND timestamp >= ? AND timestamp <= ?
+            ORDER BY timestamp
+        ''', (company_id, start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d 23:59:59')))
+
+        all_events = c.fetchall()
+
+        # Organiser les sessions par utilisateur et par jour
+        sessions_by_user_day = {}
+        active_connections_by_user = {}  # Suivi des connexions actives par utilisateur
+
+        for row in all_events:
+            timestamp_str, username, ip_address, duration, event_type, vpn_type = row
+
+            # Parser le timestamp (support ISO format et format standard)
+            try:
+                # Essayer ISO format avec T et microsecondes
+                event_time = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
+            except:
+                try:
+                    # Essayer ISO format avec T sans microsecondes
+                    event_time = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
+                except:
+                    try:
+                        # Essayer format standard avec espace
+                        event_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                    except:
+                        try:
+                            # Essayer format standard avec espace et microsecondes
+                            event_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
+                        except:
+                            app.logger.warning(f"[DEBUG] Could not parse timestamp: {timestamp_str}")
+                            continue
+
+            date_str = event_time.strftime('%Y-%m-%d')
+
+            if username not in sessions_by_user_day:
+                sessions_by_user_day[username] = {}
+
+            if date_str not in sessions_by_user_day[username]:
+                sessions_by_user_day[username][date_str] = []
+
+            if username not in active_connections_by_user:
+                active_connections_by_user[username] = {}
+
+            # Déterminer si local ou remote
+            is_local = is_local_ip(ip_address, int(company_id)) if ip_address else True
+
+            if event_type == 'vpn_connect':
+                # Début d'une session
+                active_connections_by_user[username][ip_address] = {
+                    'start': event_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'date': date_str,
+                    'is_local': is_local,
+                    'vpn_type': vpn_type if vpn_type else 'N/A'
+                }
+            elif event_type == 'vpn_disconnect' and ip_address in active_connections_by_user.get(username, {}):
+                # Fin d'une session
+                active_conn = active_connections_by_user[username][ip_address]
+                sessions_by_user_day[username][active_conn['date']].append({
+                    'start': active_conn['start'],
+                    'end': event_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'duration': duration if duration else 0,
+                    'is_local': active_conn['is_local'],
+                    'ip': ip_address if ip_address else 'N/A',
+                    'vpn_type': active_conn['vpn_type']
+                })
+                del active_connections_by_user[username][ip_address]
+
+        # Ajouter les connexions toujours actives
+        for username, connections in active_connections_by_user.items():
+            for ip, active_conn in connections.items():
+                if username not in sessions_by_user_day:
+                    sessions_by_user_day[username] = {}
+                if active_conn['date'] not in sessions_by_user_day[username]:
+                    sessions_by_user_day[username][active_conn['date']] = []
+                sessions_by_user_day[username][active_conn['date']].append({
+                    'start': active_conn['start'],
+                    'end': None,
+                    'duration': 0,
+                    'is_local': active_conn['is_local'],
+                    'ip': ip if ip else 'N/A',
+                    'vpn_type': active_conn['vpn_type']
+                })
+
+        # Formater les résultats
+        users_data = []
+        for username, daily_data in user_daily_stats.items():
+            daily_list = sorted(daily_data.values(), key=lambda x: x['date'])
+
+            # Ajouter les sessions à chaque jour
+            for day in daily_list:
+                if username in sessions_by_user_day and day['date'] in sessions_by_user_day[username]:
+                    day['sessions'] = sessions_by_user_day[username][day['date']]
+                else:
+                    day['sessions'] = []
+
+            total_remote = sum(d['remote_duration'] for d in daily_list)
+            total_connections = sum(d['remote_connections'] for d in daily_list)
+
+            display_username = anonymize_username(username) if is_demo_mode() else username
+
+            users_data.append({
+                'username': display_username,
+                'daily': daily_list,
+                'totals': {
+                    'connections': total_connections,
+                    'duration': total_remote,
+                    'hours': round(total_remote / 3600, 2)
+                }
+            })
+
+        # Trier par temps total décroissant
+        users_data.sort(key=lambda x: x['totals']['duration'], reverse=True)
+
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'company_id': int(company_id),
+            'period': {
+                'start': start.strftime('%Y-%m-%d'),
+                'end': end.strftime('%Y-%m-%d')
+            },
+            'users': users_data
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# API Rapports PDF - Rapport société
+@app.route('/api/reports/company/pdf')
+@login_required
+def api_reports_company_pdf():
+    """Génère un PDF du rapport société"""
+    try:
+        from datetime import datetime, timedelta
+        import calendar
+
+        # Récupérer les mêmes paramètres que la route JSON
+        company_id = request.args.get('company_id')
+        period_type = request.args.get('period_type', 'week')
+        year = request.args.get('year')
+        week_number = request.args.get('week')
+        month_number = request.args.get('month')
+        quarter_number = request.args.get('quarter')
+
+        if not company_id:
+            return jsonify({'status': 'error', 'message': 'Company ID requis'}), 400
+
+        # Faire un appel HTTP interne à la route JSON pour récupérer les données
+        import requests
+        url = f'http://127.0.0.1/api/reports/company?company_id={company_id}&period_type={period_type}'
+        if year:
+            url += f'&year={year}'
+        if week_number:
+            url += f'&week={week_number}'
+        if month_number:
+            url += f'&month={month_number}'
+        if quarter_number:
+            url += f'&quarter={quarter_number}'
+
+        # Copier les cookies de session
+        cookies = request.cookies
+        response = requests.get(url, cookies=cookies)
+
+        if response.status_code != 200:
+            return jsonify({'status': 'error', 'message': 'Erreur lors de la récupération des données'}), 500
+
+        data = response.json()
+
+        # Récupérer les informations de la société pour le logo
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('SELECT name, logo FROM companies WHERE id = ?', (company_id,))
+        company = c.fetchone()
+        conn.close()
+
+        if not company:
+            return jsonify({'status': 'error', 'message': 'Société introuvable'}), 404
+
+        company_name = company[0]
+        company_logo_path = None
+        if company[1]:
+            # Utiliser file:// pour que WeasyPrint puisse charger l'image
+            company_logo_path = f"file://{os.path.join(LOGOS_FOLDER, company[1])}"
+
+        # Préparer le label de période
+        now = datetime.now()
+        current_year = int(year) if year else now.year
+
+        if period_type == 'week':
+            week = int(week_number) if week_number else now.isocalendar()[1]
+            period_label = f"Semaine {week}, {current_year}"
+        elif period_type == 'month':
+            month = int(month_number) if month_number else now.month
+            month_names = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+            period_label = f"{month_names[month-1]} {current_year}"
+        elif period_type == 'quarter':
+            quarter = int(quarter_number) if quarter_number else ((now.month - 1) // 3 + 1)
+            period_label = f"Trimestre {quarter}, {current_year}"
+
+        # Formater les données
+        def format_duration(seconds):
+            if not seconds:
+                return "0h 00m"
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            return f"{hours}h {minutes:02d}m"
+
+        # Calculer les totaux depuis les données quotidiennes
+        total_remote = 0
+        total_local = 0
+        total_duration_seconds = 0
+
+        for user in data['users']:
+            for day in user['daily']:
+                total_remote += day.get('remote_connections', 0)
+                total_local += day.get('local_connections', 0)
+            total_duration_seconds += user.get('totals', {}).get('duration', 0)
+
+        summary = {
+            'total_remote_connections': total_remote,
+            'total_local_connections': total_local,
+            'total_duration': format_duration(total_duration_seconds)
+        }
+
+        # Formater les utilisateurs
+        users_formatted = []
+        for user in data['users']:
+            # Calculer les totaux depuis les données quotidiennes
+            remote_connections = sum(day.get('remote_connections', 0) for day in user['daily'])
+            local_connections = sum(day.get('local_connections', 0) for day in user['daily'])
+            total_duration_seconds = user.get('totals', {}).get('duration', 0)
+
+            user_formatted = {
+                'username': user['username'],
+                'remote_connections': remote_connections,
+                'local_connections': local_connections,
+                'total_duration': format_duration(total_duration_seconds),
+                'daily_data': []
+            }
+
+            # Filtrer et formater les jours
+            for day in user['daily']:
+                if day.get('remote_connections', 0) == 0:
+                    continue
+
+                date_obj = datetime.strptime(day['date'], '%Y-%m-%d')
+                day_formatted = {
+                    'date': date_obj.strftime('%d/%m/%Y'),
+                    'remote_connections': day.get('remote_connections', 0),
+                    'local_connections': day.get('local_connections', 0),
+                    'sessions': []
+                }
+
+                # Ajouter les sessions pour la timeline (si disponibles)
+                for session in day.get('sessions', []):
+                    try:
+                        # Calculer les pourcentages pour la timeline 24h
+                        if session.get('start'):
+                            start_time = datetime.strptime(session['start'], '%Y-%m-%d %H:%M:%S')
+                            start_hour = start_time.hour + start_time.minute / 60 + start_time.second / 3600
+                            start_percent = (start_hour / 24) * 100
+
+                            # Calculer la durée en heures
+                            if session.get('end'):
+                                end_time = datetime.strptime(session['end'], '%Y-%m-%d %H:%M:%S')
+                                duration_seconds = (end_time - start_time).total_seconds()
+                            elif session.get('duration'):
+                                duration_seconds = session['duration']
+                            else:
+                                duration_seconds = 0
+
+                            duration_hours = duration_seconds / 3600
+                            duration_percent = (duration_hours / 24) * 100
+
+                            day_formatted['sessions'].append({
+                                'is_local': session.get('is_local', False),
+                                'start_percent': round(start_percent, 4),
+                                'duration_percent': round(duration_percent, 4)
+                            })
+                    except (KeyError, TypeError, ValueError) as e:
+                        # Ignorer les sessions sans les données nécessaires
+                        app.logger.warning(f"Erreur calcul session timeline (company): {e}")
+                        pass
+
+                user_formatted['daily_data'].append(day_formatted)
+
+            users_formatted.append(user_formatted)
+
+        # Rendre le template HTML
+        html_content = render_template('pdf/company_report.html',
+            company_name=company_name,
+            period_label=period_label,
+            generation_date=datetime.now().strftime('%d/%m/%Y %H:%M'),
+            summary=summary,
+            users=users_formatted,
+            company_logo=company_logo_path,
+            app_version=APP_VERSION
+        )
+
+        # Générer le PDF
+        pdf_file = HTML(string=html_content, base_url=request.host_url).write_pdf()
+
+        # Créer la réponse
+        response = make_response(pdf_file)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="rapport_societe_{company_name}_{period_type}_{current_year}.pdf"'
+
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Erreur génération PDF société: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':

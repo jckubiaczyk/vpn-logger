@@ -300,14 +300,110 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 
 ---
 
+---
+
+## [2.3.0] - 2025-10-07
+
+### 📄 Export PDF des Rapports
+
+#### Rapports PDF générés
+- **Rapport Utilisateur** (format portrait A4)
+  - Statistiques de la période (connexions remote/local, durées)
+  - Timeline graphique 24h avec marqueurs horaires
+  - Détail par jour avec vue graphique
+  - Logo de société inclus (si configuré)
+
+- **Rapport Société** (format paysage A4)
+  - Vue consolidée de tous les utilisateurs
+  - Statistiques globales par société
+  - Timelines individuelles par utilisateur et par jour
+  - Format optimisé pour impression paysage
+
+#### Fonctionnalités des rapports
+- **Timeline graphique 24h** :
+  - Marqueurs horaires : 00:00, 04:00, 08:00, 12:00, 16:00, 20:00, 24:00
+  - Alignement précis avec grille CSS (grid-template-columns)
+  - Barres de session positionnées selon l'heure exacte
+  - Distinction visuelle : 🟢 Local (vert) / 🟠 Remote (orange)
+
+- **Périodes supportées** :
+  - Semaine (ISO 8601)
+  - Mois
+  - Trimestre
+  - Année
+
+- **Statistiques incluses** :
+  - Nombre de connexions (remote/local séparées)
+  - Durée totale et moyenne des sessions
+  - Détail quotidien avec compteurs
+
+#### Gestion des logos
+- **Upload de logos** via interface d'administration
+  - Formats : PNG, JPG, JPEG, GIF
+  - Taille max : 2 MB
+  - Stockage : `/static/logos/`
+
+- **Affichage dans PDF** :
+  - Logo centré en en-tête
+  - Protocole `file://` pour WeasyPrint
+  - Dimensions max : 200x80px (user) / 200x60px (company)
+
+#### Routes API ajoutées
+- `GET /api/reports/user/pdf` : Génère PDF rapport utilisateur
+  - Paramètres : username, period_type, year, week, month, quarter, company_id
+
+- `GET /api/reports/company/pdf` : Génère PDF rapport société
+  - Paramètres : company_id, period_type, year, week, month, quarter
+
+- `POST /api/admin/companies/<id>/logo` : Upload logo société
+  - Validation format et taille
+  - Suppression ancien logo si existant
+
+- `DELETE /api/admin/companies/<id>/logo` : Suppression logo
+
+#### Améliorations techniques
+- **WeasyPrint 60.0+** : Génération PDF depuis HTML/CSS
+- **Calcul positions timeline** :
+  - start_percent = (heure_début / 24) × 100
+  - duration_percent = (durée_heures / 24) × 100
+
+- **Appels API internes** :
+  - Utilisation de `requests` pour appeler `/api/reports/user` et `/api/reports/company`
+  - Propagation des cookies de session pour authentification
+
+- **Gestion robuste des données** :
+  - `.get()` pour éviter KeyError sur clés optionnelles
+  - Calcul des totaux depuis données quotidiennes
+  - Support des sessions actives (end=None)
+
+#### Corrections apportées
+- **Alignement timeline** : Grid CSS au lieu de flexbox space-between
+- **Structure données** : Adaptation aux différences API user vs company
+  - User : remote_connections, local_connections, remote_duration, local_duration
+  - Company : uniquement remote_connections et remote_duration
+- **Chemins fichiers** : Préfixe `file://` pour images locales dans WeasyPrint
+- **Calcul sessions** : Parser timestamps, calculer durée end-start ou utiliser champ duration
+
+#### Dépendances système requises
+```bash
+apt-get install python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0
+pip3 install --break-system-packages weasyprint requests
+```
+
+#### Fichiers ajoutés
+- `/templates/pdf/user_report.html` : Template rapport utilisateur
+- `/templates/pdf/company_report.html` : Template rapport société
+- `/static/logos/` : Répertoire stockage logos
+
+---
+
 ## Roadmap
 
-### v2.2.0 (À venir)
+### v2.4.0 (À venir)
 - [ ] Logs d'audit complets
-- [ ] Export PDF rapports
-- [ ] Graphiques statistiques (Chart.js)
 - [ ] Dark mode
 - [ ] Support LDAPS (SSL/TLS) avec validation certificat
+- [ ] Envoi rapports PDF par email
 
 ### v2.3.0 (Futur)
 - [ ] API REST complète (OpenAPI)

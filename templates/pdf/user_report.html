@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport Utilisateur - {{ username }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "Rapport Utilisateur VPN";
+            }
+            @bottom-center {
+                content: "Page " counter(page) " / " counter(pages);
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2563eb;
+            font-size: 24pt;
+        }
+
+        .header .company-logo {
+            max-width: 200px;
+            max-height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .report-info {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .report-info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-info td {
+            padding: 5px;
+        }
+
+        .report-info td:first-child {
+            font-weight: bold;
+            width: 150px;
+        }
+
+        .summary {
+            background: #eff6ff;
+            padding: 15px;
+            border-left: 4px solid #2563eb;
+            margin: 20px 0;
+        }
+
+        .summary h2 {
+            margin-top: 0;
+            color: #2563eb;
+            font-size: 14pt;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .summary-item {
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+        }
+
+        .summary-item .label {
+            font-size: 9pt;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        .summary-item .value {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin-top: 5px;
+        }
+
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 9pt;
+        }
+
+        table.data-table thead {
+            background: #2563eb;
+            color: white;
+        }
+
+        table.data-table th {
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        table.data-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        table.data-table tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        .timeline-container {
+            margin: 10px 0;
+        }
+
+        .timeline-24h {
+            position: relative;
+            height: 30px;
+            background: #f3f4f6;
+            border-radius: 3px;
+            margin: 5px 0 2px 0;
+        }
+
+        .timeline-hours {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            font-size: 7pt;
+            color: #6b7280;
+            margin: 0 0 10px 0;
+        }
+
+        .timeline-hours span {
+            text-align: left;
+        }
+
+        .timeline-hours span:last-child {
+            text-align: right;
+        }
+
+        .timeline-session {
+            position: absolute;
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .timeline-session.local {
+            background: #10b981;
+        }
+
+        .timeline-session.remote {
+            background: #f59e0b;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+            font-size: 9pt;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 2px;
+        }
+
+        .legend-color.local {
+            background: #10b981;
+        }
+
+        .legend-color.remote {
+            background: #f59e0b;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 8pt;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        h3 {
+            color: #2563eb;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            font-size: 12pt;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        {% if company_logo %}
+        <img src="{{ company_logo }}" class="company-logo" alt="Logo">
+        {% endif %}
+        <h1>Rapport Utilisateur VPN</h1>
+    </div>
+
+    <div class="report-info">
+        <table>
+            <tr>
+                <td>Utilisateur :</td>
+                <td><strong>{{ username }}</strong></td>
+            </tr>
+            <tr>
+                <td>Période :</td>
+                <td>{{ period_label }}</td>
+            </tr>
+            <tr>
+                <td>Date de génération :</td>
+                <td>{{ generation_date }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="summary">
+        <h2>Résumé de la période</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="label">Connexions Remote</div>
+                <div class="value">{{ summary.remote_connections }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="label">Connexions Local</div>
+                <div class="value">{{ summary.local_connections }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="label">Durée Totale</div>
+                <div class="value">{{ summary.total_duration }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="label">Durée Moyenne</div>
+                <div class="value">{{ summary.avg_duration }}</div>
+            </div>
+        </div>
+    </div>
+
+    <h3>Détail par jour</h3>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color remote"></div>
+            <span>Connexion Remote</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color local"></div>
+            <span>Connexion Local</span>
+        </div>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th style="text-align: center;">Remote</th>
+                <th style="text-align: center;">Local</th>
+                <th>Vue graphique (24h)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for day in daily_data %}
+            <tr>
+                <td>{{ day.date }}</td>
+                <td style="text-align: center;">{{ day.remote_connections }}</td>
+                <td style="text-align: center;">{{ day.local_connections }}</td>
+                <td>
+                    <div class="timeline-container">
+                        <div class="timeline-24h">
+                            {% for session in day.sessions %}
+                            <div class="timeline-session {{ 'local' if session.is_local else 'remote' }}"
+                                 style="left: {{ session.start_percent }}%; width: {{ session.duration_percent }}%;"></div>
+                            {% endfor %}
+                        </div>
+                        <div class="timeline-hours">
+                            <span>00:00</span>
+                            <span>04:00</span>
+                            <span>08:00</span>
+                            <span>12:00</span>
+                            <span>16:00</span>
+                            <span>20:00</span>
+                            <span>24:00</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Généré par VPN Logger v{{ app_version }} - {{ company_name }}
+    </div>
+</body>
+</html>
