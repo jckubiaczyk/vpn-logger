@@ -302,7 +302,7 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 
 ---
 
-## [2.3.0] - 2025-10-07
+## [2.2.2] - 2025-10-07
 
 ### 📄 Export PDF des Rapports
 
@@ -399,24 +399,59 @@ pip3 install --break-system-packages weasyprint requests
 
 ## Roadmap
 
-### v2.4.0 (À venir)
-- [ ] Logs d'audit complets
-- [ ] Dark mode
-- [ ] Support LDAPS (SSL/TLS) avec validation certificat
-- [ ] Envoi rapports PDF par email
+### v2.2.3 (Prochaine)
+- [ ] **Logs d'audit complets**
+  - Traçabilité des actions admin
+  - Historique des modifications
+  - Export des logs d'audit
+
+### v2.2.4.1 (HTTPS/SSL - Configuration)
+- [ ] **Configuration certificats**
+  - Support Let's Encrypt
+  - Certificats auto-signés
+  - Configuration Apache/Nginx
+
+### v2.2.4.2 (HTTPS/SSL - Redirection)
+- [ ] **Redirection et sécurité**
+  - Redirection HTTP → HTTPS
+  - Configuration Flask SSL
+
+### v2.2.4.3 (HTTPS/SSL - Durcissement)
+- [ ] **Durcissement sécurité**
+  - HSTS (HTTP Strict Transport Security)
+  - Configuration headers sécurité
+  - Tests SSL/TLS
 
 ### v2.3.0 (Futur)
-- [ ] API REST complète (OpenAPI)
-- [ ] Bcrypt pour mots de passe
-- [ ] 2FA (TOTP)
-- [ ] Notifications email/Slack
-- [ ] Mobile responsive
+- [ ] **API REST complète (OpenAPI)**
+  - Documentation Swagger/OpenAPI
+  - Endpoints standardisés REST
+- [ ] **Bcrypt pour mots de passe**
+  - Migration vers bcrypt
+  - Politique de mot de passe renforcée
+- [ ] **2FA (TOTP)**
+  - Authentification à deux facteurs
+  - Support Google Authenticator/Authy
+- [ ] **Notifications email/Slack**
+  - Alertes configurable
+  - Webhooks personnalisés
 
-### v3.0.0 (Vision)
+### v2.4.0 (Vision Mobile)
+- [ ] **Compatibilité mobile améliorée**
+  - Optimisation responsive de l'interface
+  - Design mobile-first pour les graphiques
+  - Adaptation des tableaux pour petits écrans
+  - Menu hamburger pour la navigation
+- [ ] **Application mobile native**
+  - Étude de faisabilité (React Native / Flutter)
+  - Prototype application iOS/Android
+  - Notifications push pour alertes
+  - Mode hors-ligne avec synchronisation
+
+### v3.0.0 (Vision Enterprise)
 - [ ] PostgreSQL support
 - [ ] Clustering/HA
 - [ ] SSO (SAML, OAuth2)
-- [ ] Mobile app native
 - [ ] AI anomaly detection
 
 ---

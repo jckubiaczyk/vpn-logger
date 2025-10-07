@@ -1,4 +1,4 @@
-# VPN Logger v2.2.1
+# VPN Logger v2.2.2
 
 Système de monitoring et de logging des connexions VPN UniFi avec interface web multi-tenant.
 
@@ -32,13 +32,20 @@ Système de monitoring et de logging des connexions VPN UniFi avec interface web
   - Top utilisateurs et statistiques par société
   - Distribution des durées de session
   - Filtres par période (7j, 30j, 90j, personnalisée)
+- **Rapports PDF** : Export PDF des rapports (v2.2.2)
+  - Rapport utilisateur (format portrait A4)
+  - Rapport société (format paysage A4)
+  - Timeline graphique 24h avec marqueurs horaires
+  - Logos de société personnalisables
+  - Statistiques détaillées par période
 - **Filtrage avancé** : Par société, utilisateur, type d'événement
 - **Export CSV** : Export des logs
 
 ### Administration
 - **Gestion utilisateurs** : CRUD complet, attribution rôles et sociétés
-- **Gestion sociétés** : CRUD avec configuration réseaux locaux et LDAP
+- **Gestion sociétés** : CRUD avec configuration réseaux locaux, LDAP et logos
 - **Gestion routeurs** : Association routeurs UniFi aux sociétés
+- **Upload logos** : Gestion des logos de société pour les rapports PDF
 
 ## 📋 Prérequis
 
@@ -46,6 +53,7 @@ Système de monitoring et de logging des connexions VPN UniFi avec interface web
 - Flask
 - SQLite3
 - python3-ldap (pour authentification LDAP)
+- WeasyPrint (pour génération PDF)
 - UniFi Controller/Dream Machine avec webhooks
 
 ## 🔧 Installation
@@ -61,7 +69,8 @@ cd vpn-logger
 
 ```bash
 sudo apt update
-sudo apt install -y python3-flask python3-ldap sqlite3
+sudo apt install -y python3-flask python3-ldap sqlite3 python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0
+pip3 install --break-system-packages weasyprint requests
 ```
 
 ### 3. Initialiser la base de données
@@ -144,11 +153,13 @@ Pour activer l'authentification LDAP/Active Directory :
   - Réduction de la duplication de code
   - Maintenance simplifiée
 
-### v2.2.2
-- [ ] Export PDF rapports
-  - Export des logs en PDF
-  - Rapports statistiques PDF
-  - Mise en page personnalisée
+### v2.2.2 ✅ (Complété - 2025-10-07)
+- [x] Export PDF rapports
+  - Rapport utilisateur (format portrait A4)
+  - Rapport société (format paysage A4)
+  - Timeline graphique 24h avec marqueurs horaires
+  - Upload et gestion des logos de société
+  - Statistiques détaillées par période
 
 ### v2.2.3
 - [ ] Logs d'audit complets

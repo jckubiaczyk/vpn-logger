@@ -37,7 +37,7 @@ logging.basicConfig(
 app.logger.setLevel(logging.INFO)
 
 # Configuration
-APP_VERSION = '2.3.0'
+APP_VERSION = '2.2.2'
 DB_PATH = '/var/www/html/vpn-logger/vpn_logs.db'
 LOG_FILE = '/var/www/html/vpn-logger/vpn_events.log'
 CONFIG_FILE = '/var/www/html/vpn-logger/config.json'
